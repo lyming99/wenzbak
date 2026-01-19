@@ -73,7 +73,7 @@ Wenzbak 是一个专为笔记类应用设计的数据备份系统，提供完整
 dependencies:
   wenzbak:
     git:
-      url: https://github.com/your-username/wenzbak.git
+      url: https://github.com/lyming99/wenzbak.git
       ref: main
 ```
 
@@ -289,7 +289,7 @@ var config = WenzbakConfig(
 
 1. 克隆仓库
 ```bash
-git clone https://github.com/your-username/wenzbak.git
+git clone https://github.com/lyming99/wenzbak.git
 cd wenzbak
 ```
 
