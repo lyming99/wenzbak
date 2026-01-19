@@ -1,0 +1,28 @@
+# 使用第三方 MinIO 镜像的配置
+# MinIO 官方已停止提供预编译 Docker 镜像，使用第三方构建的镜像
+
+services:
+  minio:
+    # 使用 coollabsio/minio (自动从源码构建，推荐)
+    image: coollabsio/minio:latest
+    # 备选方案: bitnami/minio
+    # image: bitnami/minio:latest
+    container_name: wenzbak-minio
+    ports:
+      - "9000:9000"      # API 端口
+      - "9001:9001"      # 控制台端口
+    environment:
+      MINIO_ROOT_USER: minioadmin      # 默认管理员用户名
+      MINIO_ROOT_PASSWORD: minioadmin  # 默认管理员密码
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+volumes:
+  minio_data:
+    driver: local

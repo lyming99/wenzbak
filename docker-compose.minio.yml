@@ -1,0 +1,26 @@
+services:
+  minio:
+    # 使用第三方构建的 MinIO 镜像（官方已停止提供预编译镜像）
+    # 选项1: coollabsio/minio (推荐，自动从源码构建)
+    image: coollabsio/minio:latest
+    # 选项2: bitnami/minio (备选)
+    # image: bitnami/minio:latest
+    container_name: wenzbak-minio
+    ports:
+      - "9000:9000"      # API 端口
+      - "9001:9001"      # 控制台端口
+    environment:
+      MINIO_ROOT_USER: minioadmin      # 默认管理员用户名
+      MINIO_ROOT_PASSWORD: minioadmin  # 默认管理员密码
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+volumes:
+  minio_data:
+    driver: local

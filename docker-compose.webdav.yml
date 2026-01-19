@@ -1,0 +1,27 @@
+services:
+  webdav:
+    # 使用 bytemark/webdav 镜像（Apache WebDAV 服务器）
+    image: bytemark/webdav:latest
+    container_name: wenzbak-webdav
+    ports:
+      - "8080:80"      # WebDAV 服务端口
+    environment:
+      # 认证类型: Basic 或 Digest (Basic 更简单，适合开发和测试)
+      AUTH_TYPE: Basic
+      # 用户名和密码
+      USERNAME: webdav
+      PASSWORD: webdav
+      # WebDAV 路径（可选，默认为 /）
+      LOCATION: /
+    volumes:
+      - webdav_data:/var/lib/dav  # WebDAV 数据存储目录
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  webdav_data:
+    driver: local

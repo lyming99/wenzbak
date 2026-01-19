@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<D:multistatus xmlns:D="DAV:" xmlns:ns0="DAV:">
+
+    <D:response xmlns:g0="DAV:" xmlns:lp1="DAV:">
+
+        <D:href>/wenzbak/public/messages/device-001/</D:href>
+
+        <D:propstat>
+
+            <D:prop>
+
+                <lp1:resourcetype>
+                    <D:collection/>
+                </lp1:resourcetype>
+
+            </D:prop>
+
+            <D:status>HTTP/1.1 200 OK</D:status>
+
+        </D:propstat>
+
+        <D:propstat>
+
+            <D:prop>
+
+                <g0:displayname/>
+
+            </D:prop>
+
+            <D:status>HTTP/1.1 404 Not Found</D:status>
+
+        </D:propstat>
+
+    </D:response>
+
+    <D:response xmlns:g0="DAV:" xmlns:lp1="DAV:">
+
+        <D:href>/wenzbak/public/messages/device-001/msg.lock</D:href>
+
+        <D:propstat>
+
+            <D:prop>
+
+                <lp1:resourcetype/>
+
+            </D:prop>
+
+            <D:status>HTTP/1.1 200 OK</D:status>
+
+        </D:propstat>
+
+        <D:propstat>
+
+            <D:prop>
+
+                <g0:displayname/>
+
+            </D:prop>
+
+            <D:status>HTTP/1.1 404 Not Found</D:status>
+
+        </D:propstat>
+
+    </D:response>
+
+    <D:response xmlns:g0="DAV:" xmlns:lp1="DAV:">
+
+        <D:href>/wenzbak/public/messages/device-001/2026-01-19-23.msg-0.gz.sha256</D:href>
+
+        <D:propstat>
+
+            <D:prop>
+
+                <lp1:resourcetype/>
+
+            </D:prop>
+
+            <D:status>HTTP/1.1 200 OK</D:status>
+
+        </D:propstat>
+
+        <D:propstat>
+
+            <D:prop>
+
+                <g0:displayname/>
+
+            </D:prop>
+
+            <D:status>HTTP/1.1 404 Not Found</D:status>
+
+        </D:propstat>
+
+    </D:response>
+
+    <D:response xmlns:g0="DAV:" xmlns:lp1="DAV:">
+
+        <D:href>/wenzbak/public/messages/device-001/2026-01-19-23.msg-0.gz</D:href>
+
+        <D:propstat>
+
+            <D:prop>
+
+                <lp1:resourcetype/>
+
+            </D:prop>
+
+            <D:status>HTTP/1.1 200 OK</D:status>
+
+        </D:propstat>
+
+        <D:propstat>
+
+            <D:prop>
+
+                <g0:displayname/>
+
+            </D:prop>
+
+            <D:status>HTTP/1.1 404 Not Found</D:status>
+
+        </D:propstat>
+
+    </D:response>
+
+</D:multistatus>
