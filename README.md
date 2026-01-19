@@ -1,71 +1,333 @@
-# 温知数据备份系统
+# 🔐 Wenzbak - 温知数据备份系统
 
-## 项目介绍
+<div align="center">
 
-帮助笔记类工具快速建立自己的数据备份功能，给用户数据提供一个安全保障，提升软件的稳定性和安全性，降低用户数据同步成本，提高数据同步速度。
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+[![Dart](https://img.shields.io/badge/Dart-3.8%2B-blue.svg)](https://dart.dev)
+[![Flutter](https://img.shields.io/badge/Flutter-Compatible-green.svg)](https://flutter.dev)
 
-## 功能列表
+**帮助笔记类工具快速建立自己的数据备份功能，为用户数据提供安全保障**
+
+[特性](#-核心特性) • [快速开始](#-快速开始) • [文档](#-文档) • [示例](#-使用示例) • [贡献](#-贡献)
+
+</div>
+
+---
+
+## 📖 项目简介
+
+Wenzbak 是一个专为笔记类应用设计的数据备份系统，提供完整的数据备份、同步和加密解决方案。通过简单的 API 集成，让你的应用快速拥有企业级的数据备份能力。
+
+### 🎯 为什么选择 Wenzbak？
+
+- ✅ **开箱即用** - 几行代码即可集成完整的备份功能
+- ✅ **多存储支持** - 支持 S3、WebDAV、本地文件系统等多种存储后端
+- ✅ **数据安全** - 内置加密功能，保护用户隐私
+- ✅ **增量同步** - 智能增量备份，节省带宽和时间
+- ✅ **跨设备同步** - 支持多设备间的数据同步和消息推送
+- ✅ **轻量级** - 纯 Dart 实现，无额外依赖
+
+---
+
+## ✨ 核心特性
+
+### 📦 数据备份
+- **增量备份** - 只同步变更的数据，大幅减少传输量
+- **数据合并** - 自动合并历史数据，优化存储结构
+- **断点续传** - 支持上传失败后自动重试
+
+### 🔒 数据加密
+- **端到端加密** - 支持 AES 加密，数据在传输和存储时都受到保护
+- **密钥隔离** - 支持多密钥管理，不同密钥的数据完全隔离
+- **可选加密** - 可选择启用或禁用加密功能
+
+### 📁 文件管理
+- **文件上传** - 支持任意文件类型的上传和下载
+- **SHA256 校验** - 自动校验文件完整性，避免重复上传
+- **临时文件** - 支持临时文件的自动清理机制
+
+### 💬 消息同步
+- **实时消息** - 支持跨设备的消息推送（轮询机制）
+- **消息队列** - 可靠的消息队列，确保消息不丢失
+- **自动重试** - 消息发送失败自动重试
+
+### 🌐 多存储后端
+- **S3 兼容** - 支持 AWS S3、MinIO 等 S3 兼容存储
+- **WebDAV** - 支持 WebDAV 协议，兼容 Nextcloud、OwnCloud 等
+- **本地文件** - 支持本地文件系统存储（用于测试）
+
+### 📱 设备管理
+- **设备信息** - 自动获取和管理设备信息
+- **多设备支持** - 支持同一账户下的多设备管理
+- **设备查询** - 快速查询所有设备信息
+
+---
+
+## 🚀 快速开始
+
+### 安装
+
+在 `pubspec.yaml` 中添加依赖：
+
+```yaml
+dependencies:
+  wenzbak:
+    git:
+      url: https://github.com/your-username/wenzbak.git
+      ref: main
+```
+
+或者使用本地路径：
+
+```yaml
+dependencies:
+  wenzbak:
+    path: ../wenzbak
+```
+
+### 基本使用
+
+#### 1. 配置存储后端
+
+**使用 S3/MinIO：**
+
+```dart
+import 'dart:convert';
+import 'package:wenzbak/wenzbak.dart';
+
+var s3Config = {
+  'endpoint': 'http://localhost:9000',
+  'accessKey': 'minioadmin',
+  'secretKey': 'minioadmin',
+  'bucket': 'wenzbak',
+  'region': 'us-east-1',
+};
+
+var config = WenzbakConfig(
+  deviceId: 'device-001',
+  localRootPath: './local_backup',
+  remoteRootPath: 'wenzbak',
+  storageType: 's3',
+  storageConfig: jsonEncode(s3Config),
+);
+```
+
+**使用 WebDAV：**
+
+```dart
+var webdavConfig = {
+  'url': 'http://localhost:8080',
+  'username': 'webdav',
+  'password': 'webdav',
+};
+
+var config = WenzbakConfig(
+  deviceId: 'device-001',
+  localRootPath: './local_backup',
+  remoteRootPath: 'wenzbak',
+  storageType: 'webdav',
+  storageConfig: jsonEncode(webdavConfig),
+);
+```
+
+#### 2. 创建客户端
+
+```dart
+var backupClient = WenzbakClientServiceImpl(config);
+```
+
+#### 3. 上传设备信息
+
+```dart
+await backupClient.uploadDeviceInfo();
+```
+
+#### 4. 备份数据
+
+```dart
+// 添加数据到备份队列
+await backupClient.addBackupData(
+  WenzbakDataLine(
+    createTime: DateTime.now(),
+    content: "你的数据内容",
+  ),
+);
+
+// 上传所有待备份的数据
+await backupClient.uploadAllData(false);
+```
+
+#### 5. 下载数据
+
+```dart
+// 添加数据接收器
+backupClient.addDataReceiver((line) async {
+  print('收到数据: ${line.content}');
+});
+
+// 下载所有数据（增量下载）
+await backupClient.downloadAllData();
+```
+
+---
+
+## 📚 使用示例
+
+### 数据备份示例
+
+```dart
+// 添加数据
+await backupClient.addBackupData(
+  WenzbakDataLine(
+    createTime: DateTime.now(),
+    content: "笔记内容",
+  ),
+);
+
+// 上传数据
+await backupClient.uploadAllData(false);
+
+// 合并历史数据
+await backupClient.mergeHistoryData();
+```
+
+### 文件上传示例
+
+```dart
+// 上传文件
+var remotePath = await backupClient.uploadAssets('./local_file.txt');
+if (remotePath != null) {
+  print('文件上传成功: $remotePath');
+}
+```
+
+### 消息同步示例
+
+```dart
+// 发送消息
+var message = WenzbakMessage(
+  uuid: Uuid().v4(),
+  content: 'Hello from device-001!',
+  timestamp: DateTime.now().millisecondsSinceEpoch,
+);
+await backupClient.messageService.sendMessage(message);
+
+// 接收消息
+backupClient.addMessageReceiver((message) async {
+  print('收到消息: ${message.content}');
+});
+
+// 启动自动轮询
+backupClient.startMessageTimer();
+```
+
+### 加密数据示例
+
+```dart
+var config = WenzbakConfig(
+  deviceId: 'device-001',
+  localRootPath: './local_backup',
+  remoteRootPath: 'wenzbak',
+  storageType: 's3',
+  storageConfig: jsonEncode(s3Config),
+  secretKey: 'my-secret-key', // 启用加密
+  encryptFile: true,           // 加密文件
+);
+```
+
+更多示例请查看 [example](./example) 目录。
+
+---
+
+## 📖 文档
+
+- [设备服务文档](./docs/device/DEVICE_SERVICE.md) - 设备信息管理
+- [文件上传文档](./docs/file/upload.md) - 文件上传功能
+- [MinIO 快速开始](./docs/minio/QUICKSTART_MINIO.md) - MinIO 存储配置
+- [WebDAV 快速开始](./docs/webdav/QUICKSTART_WEBDAV.md) - WebDAV 存储配置
+- [WebDAV 设置指南](./docs/webdav/WEBDAV_SETUP.md) - WebDAV 详细配置
+
+---
+
+## 🛠️ 支持的存储后端
+
+| 存储类型 | 状态 | 说明 |
+|---------|------|------|
+| **S3** | ✅ 支持 | 支持 AWS S3、MinIO 等 S3 兼容存储 |
+| **WebDAV** | ✅ 支持 | 支持 Nextcloud、OwnCloud 等 WebDAV 服务器 |
+| **本地文件** | ✅ 支持 | 用于开发和测试 |
+| **FTP/SFTP** | 🚧 计划中 | 即将支持 |
+
+---
+
+## 📋 功能路线图
+
 - [x] 文件备份
 - [x] 数据备份
 - [x] 数据加密
-- [x] 数据同步
+- [x] 数据压缩优化
 - [x] 增量同步
-- [x] webdav 支持
-- [x] s3 支持
-- [ ] ftp/sftp 支持
+- [x] 实时消息（轮询）
+- [x] WebDAV 支持
+- [x] S3 支持
+- [ ] FTP/SFTP 支持
+- [ ] 更多存储后端支持
 
-## 数据类型
-- 数据集
-- 文件
+---
 
-## 相关问题
+## 🤝 贡献
 
-### 如何实现增量同步？
+欢迎贡献代码！请遵循以下步骤：
 
-问题描述：客户端对数据实现增量同步，减少每次数据同步的传输数据量。
+1. Fork 本仓库
+2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
+3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
+4. 推送到分支 (`git push origin feature/AmazingFeature`)
+5. 开启 Pull Request
 
-解决方案：
-1. 客户端对每次编辑更新的数据进行记录，形成数据记录
-2. 将数据记录写到数据块，每100kb一个数据块，每个数据块都有一个uuid
-3. 将数据库按照创建日期进行分组上传，上传到服务器路径：[config_path]/backup/[date]/[hour]/[uuid].zip
-4. 生成文件md5信息，上传到服务器路径：[config_path]/backup/[date]/[hour]/[uuid].md5
-5. 客户端刷新数据时，查询当前时间hour和前一小时的数据块md5信息，对比本地数据块md5信息，找出需要下载的数据块
-6. 客户端下载数据后，记录数据块的md5信息，用于下次对比查询增量数据块
+### 开发指南
 
+1. 克隆仓库
+```bash
+git clone https://github.com/your-username/wenzbak.git
+cd wenzbak
+```
 
-### 增量同步关键点是什么？
+2. 安装依赖
+```bash
+dart pub get
+```
 
-1. 通过文件的md5信息，可以快速找到需要下载的数据块，从而实现增量同步。
-2. 数据按照时间进行分组，每小时只需要同步查询部分数据，减少每次同步数据量。
-3. 数据块设计，每100kb一个数据块，减少了文件产生数量，提升数据同步速度。
+3. 运行测试
+```bash
+dart test
+```
 
-### 为啥数据块是 100kb？
+---
 
-- 100kb是一个经验值，可以根据实际情况进行修改。
-- 每次编辑笔记并且保存后，笔记一般大小为1kb左右，100kb可以存储100条笔记。
-- 网络宽带如果为1mbps(需要除以8)，传输100kb数据只需要1秒。
-- 每小时3600秒，每20秒编辑保存一次，则会产生180个数据记录，也就产生了2个数据块而已。
-- 每1秒同步一次的话，数据量可控，也就相当于1张jpg图片头像的数据量。
-- 如果没有编辑数据，最多也就4个md5文件查询，数据量不到1kb。
-- 服务商会根据文件最小64kb进行存储计费，为了减少存储费用，数据块要大于64kb。
+## 📝 许可证
 
-### 何时查询备份数据？
+本项目采用 [Apache 2.0](LICENSE) 许可证。
 
-1. 列表刷新时，会查询最近2小时数据
-2. 客户端启动/手动触发，会启动一次近2日数据同步
-3. 客户端首次启动/手动触发，会进行一次全量同步
+---
 
-### 何时上传备份数据？
+## 🙏 致谢
 
-1. 用户编辑更新数据后，将数据记录写到数据备份系统
-2. 数据备份系统会根据当前数据块长度判断是否创建新的数据块
-3. 数据备份系统将记录写到数据块
-4. 数据备份系统将数据块上传到hour文件夹
+感谢所有为这个项目做出贡献的开发者！
 
-### 如何加速数据全量查询？
+---
 
-方案一： 服务器可以提供接口，或者自动化任务，实现对数据压缩，将每天数据压缩到日期下的all.zip文件，减少数据查询次数。
+## 📮 联系方式
 
-方案二： 服务器支持文件夹递归查询，减少数据查询次数。
+- 提交 Issue: [GitHub Issues](https://github.com/lyming99/wenzbak/issues)
+- 讨论区: [GitHub Discussions](https://github.com/lyming99/wenzbak/discussions)
 
-方案三： 服务器支持增量写入，客户端每次更新都会在增量文件增加数据：uuid|64位时间戳|文件md5，客户端根据这个文件查询缺失的数据块文件。
+---
+
+<div align="center">
+
+**如果这个项目对你有帮助，请给一个 ⭐ Star！**
+
+Made with ❤️ by the Wenzbak team
+
+</div>
