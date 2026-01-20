@@ -1,0 +1,1122 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wenzbak - 温知第三方数据同步系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #0f0f0f 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* 科技感网格背景 */
+        .grid-background {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(rgba(100, 200, 255, 0.15) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(100, 200, 255, 0.15) 1px, transparent 1px);
+            background-size: 50px 50px;
+            animation: gridMove 15s linear infinite;
+        }
+
+        @keyframes gridMove {
+            0% {
+                transform: translate(0, 0);
+                opacity: 0.8;
+            }
+            50% {
+                opacity: 1;
+            }
+            100% {
+                transform: translate(50px, 50px);
+                opacity: 0.8;
+            }
+        }
+
+        /* 光效 */
+        .light-effect {
+            position: absolute;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(100, 200, 255, 0.25) 0%, rgba(100, 200, 255, 0.1) 40%, transparent 70%);
+            border-radius: 50%;
+            top: -300px;
+            right: -300px;
+            animation: pulseMove 8s ease-in-out infinite;
+            filter: blur(40px);
+        }
+
+        .light-effect-2 {
+            position: absolute;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(150, 100, 255, 0.2) 0%, rgba(150, 100, 255, 0.08) 40%, transparent 70%);
+            border-radius: 50%;
+            bottom: -250px;
+            left: -250px;
+            animation: pulseMove2 10s ease-in-out infinite;
+            filter: blur(40px);
+        }
+
+        @keyframes pulseMove {
+            0% {
+                opacity: 0.4;
+                transform: scale(1) translate(0, 0);
+            }
+            33% {
+                opacity: 0.7;
+                transform: scale(1.2) translate(-30px, 30px);
+            }
+            66% {
+                opacity: 0.5;
+                transform: scale(0.9) translate(20px, -20px);
+            }
+            100% {
+                opacity: 0.4;
+                transform: scale(1) translate(0, 0);
+            }
+        }
+
+        @keyframes pulseMove2 {
+            0% {
+                opacity: 0.3;
+                transform: scale(1) translate(0, 0);
+            }
+            33% {
+                opacity: 0.6;
+                transform: scale(1.3) translate(40px, -30px);
+            }
+            66% {
+                opacity: 0.4;
+                transform: scale(0.8) translate(-25px, 25px);
+            }
+            100% {
+                opacity: 0.3;
+                transform: scale(1) translate(0, 0);
+            }
+        }
+
+        /* 额外的光效 */
+        .light-effect-3 {
+            position: absolute;
+            width: 350px;
+            height: 350px;
+            background: radial-gradient(circle, rgba(100, 255, 200, 0.15) 0%, transparent 70%);
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            animation: pulseRotate 12s ease-in-out infinite;
+            filter: blur(30px);
+        }
+
+        @keyframes pulseRotate {
+            0% {
+                opacity: 0.2;
+                transform: translate(-50%, -50%) scale(1) rotate(0deg);
+            }
+            50% {
+                opacity: 0.5;
+                transform: translate(-50%, -50%) scale(1.4) rotate(180deg);
+            }
+            100% {
+                opacity: 0.2;
+                transform: translate(-50%, -50%) scale(1) rotate(360deg);
+            }
+        }
+
+        /* 流动光线效果 */
+        .flow-line {
+            position: absolute;
+            width: 2px;
+            height: 200px;
+            background: linear-gradient(to bottom, transparent, rgba(100, 200, 255, 0.6), transparent);
+            animation: flowMove 6s linear infinite;
+        }
+
+        .flow-line:nth-child(1) {
+            left: 20%;
+            animation-delay: 0s;
+        }
+
+        .flow-line:nth-child(2) {
+            left: 40%;
+            animation-delay: 2s;
+        }
+
+        .flow-line:nth-child(3) {
+            left: 60%;
+            animation-delay: 4s;
+        }
+
+        .flow-line:nth-child(4) {
+            left: 80%;
+            animation-delay: 1s;
+        }
+
+        @keyframes flowMove {
+            0% {
+                top: -200px;
+                opacity: 0;
+            }
+            10% {
+                opacity: 1;
+            }
+            90% {
+                opacity: 1;
+            }
+            100% {
+                top: 100vh;
+                opacity: 0;
+            }
+        }
+
+        /* 星星闪烁效果 */
+        .star {
+            position: absolute;
+            width: 3px;
+            height: 3px;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 50%;
+            box-shadow: 0 0 6px rgba(100, 200, 255, 0.8);
+            animation: twinkle 3s ease-in-out infinite;
+        }
+
+        .star:nth-child(1) { top: 10%; left: 15%; animation-delay: 0s; }
+        .star:nth-child(2) { top: 20%; left: 75%; animation-delay: 0.5s; }
+        .star:nth-child(3) { top: 30%; left: 35%; animation-delay: 1s; }
+        .star:nth-child(4) { top: 40%; left: 85%; animation-delay: 1.5s; }
+        .star:nth-child(5) { top: 50%; left: 25%; animation-delay: 2s; }
+        .star:nth-child(6) { top: 60%; left: 65%; animation-delay: 2.5s; }
+        .star:nth-child(7) { top: 70%; left: 45%; animation-delay: 0.3s; }
+        .star:nth-child(8) { top: 80%; left: 15%; animation-delay: 0.8s; }
+        .star:nth-child(9) { top: 90%; left: 55%; animation-delay: 1.3s; }
+        .star:nth-child(10) { top: 15%; left: 95%; animation-delay: 1.8s; }
+
+        @keyframes twinkle {
+            0%, 100% {
+                opacity: 0.3;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 1;
+                transform: scale(1.5);
+            }
+        }
+
+        /* 粒子效果 */
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: rgba(100, 200, 255, 0.6);
+            border-radius: 50%;
+            animation: particleFloat 8s linear infinite;
+        }
+
+        .particle:nth-child(1) { left: 10%; animation-delay: 0s; }
+        .particle:nth-child(2) { left: 30%; animation-delay: 2s; }
+        .particle:nth-child(3) { left: 50%; animation-delay: 4s; }
+        .particle:nth-child(4) { left: 70%; animation-delay: 1s; }
+        .particle:nth-child(5) { left: 90%; animation-delay: 3s; }
+
+        @keyframes particleFloat {
+            0% {
+                bottom: -10px;
+                opacity: 0;
+                transform: translateX(0);
+            }
+            10% {
+                opacity: 1;
+            }
+            50% {
+                transform: translateX(30px);
+            }
+            90% {
+                opacity: 1;
+            }
+            100% {
+                bottom: 100vh;
+                opacity: 0;
+                transform: translateX(-30px);
+            }
+        }
+
+        /* 波纹效果 */
+        .ripple {
+            position: absolute;
+            width: 300px;
+            height: 300px;
+            border: 2px solid rgba(100, 200, 255, 0.3);
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            animation: rippleExpand 4s ease-out infinite;
+        }
+
+        .ripple:nth-child(1) {
+            animation-delay: 0s;
+        }
+
+        .ripple:nth-child(2) {
+            animation-delay: 1.3s;
+        }
+
+        .ripple:nth-child(3) {
+            animation-delay: 2.6s;
+        }
+
+        @keyframes rippleExpand {
+            0% {
+                transform: translate(-50%, -50%) scale(0.5);
+                opacity: 1;
+            }
+            100% {
+                transform: translate(-50%, -50%) scale(2);
+                opacity: 0;
+            }
+        }
+
+        /* 旋转光环 */
+        .ring {
+            position: absolute;
+            width: 400px;
+            height: 400px;
+            border: 1px solid rgba(150, 100, 255, 0.2);
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            animation: ringRotate 20s linear infinite;
+        }
+
+        .ring::before {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border: 1px solid rgba(100, 255, 200, 0.2);
+            border-radius: 50%;
+            transform: rotate(45deg);
+        }
+
+        @keyframes ringRotate {
+            0% {
+                transform: translate(-50%, -50%) rotate(0deg);
+            }
+            100% {
+                transform: translate(-50%, -50%) rotate(360deg);
+            }
+        }
+
+        /* 额外的光效 */
+        .light-effect-4 {
+            position: absolute;
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, rgba(255, 100, 200, 0.15) 0%, transparent 70%);
+            border-radius: 50%;
+            top: 20%;
+            right: 10%;
+            animation: lightFloat 7s ease-in-out infinite;
+            filter: blur(35px);
+        }
+
+        .light-effect-5 {
+            position: absolute;
+            width: 250px;
+            height: 250px;
+            background: radial-gradient(circle, rgba(200, 255, 100, 0.12) 0%, transparent 70%);
+            border-radius: 50%;
+            bottom: 15%;
+            right: 20%;
+            animation: lightFloat2 9s ease-in-out infinite;
+            filter: blur(30px);
+        }
+
+        @keyframes lightFloat {
+            0%, 100% {
+                transform: translate(0, 0) scale(1);
+                opacity: 0.3;
+            }
+            50% {
+                transform: translate(-40px, 30px) scale(1.3);
+                opacity: 0.6;
+            }
+        }
+
+        @keyframes lightFloat2 {
+            0%, 100% {
+                transform: translate(0, 0) scale(1);
+                opacity: 0.2;
+            }
+            50% {
+                transform: translate(30px, -40px) scale(1.2);
+                opacity: 0.5;
+            }
+        }
+
+        /* 渐变光带 */
+        .gradient-band {
+            position: absolute;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, 
+                transparent, 
+                rgba(100, 200, 255, 0.4), 
+                rgba(150, 100, 255, 0.4), 
+                transparent);
+            animation: bandMove 5s linear infinite;
+        }
+
+        .gradient-band:nth-child(1) {
+            top: 25%;
+            animation-delay: 0s;
+        }
+
+        .gradient-band:nth-child(2) {
+            top: 50%;
+            animation-delay: 2.5s;
+        }
+
+        .gradient-band:nth-child(3) {
+            top: 75%;
+            animation-delay: 1.25s;
+        }
+
+        @keyframes bandMove {
+            0% {
+                transform: translateX(-100%);
+                opacity: 0;
+            }
+            10% {
+                opacity: 1;
+            }
+            90% {
+                opacity: 1;
+            }
+            100% {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+        }
+
+        .container {
+            position: relative;
+            z-index: 10;
+            text-align: center;
+            padding: 60px 40px;
+            max-width: 1200px;
+            width: 100%;
+        }
+
+        .logo {
+            margin-bottom: 40px;
+            display: inline-block;
+            animation: fadeInUp 1s ease-out;
+        }
+
+        .logo-text {
+            font-size: 64px;
+            font-weight: 900;
+            color: #ffffff;
+            text-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            letter-spacing: 8px;
+        }
+
+        .title {
+            font-size: 72px;
+            font-weight: 800;
+            color: #ffffff;
+            margin-bottom: 30px;
+            text-shadow: 0 6px 30px rgba(0, 0, 0, 0.4);
+            letter-spacing: 4px;
+            animation: fadeInUp 1s ease-out;
+        }
+
+        .subtitle {
+            font-size: 32px;
+            font-weight: 400;
+            color: rgba(255, 255, 255, 0.9);
+            margin-bottom: 80px;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+            animation: fadeInUp 1.2s ease-out;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .outline {
+            display: flex;
+            justify-content: center;
+            gap: 60px;
+            flex-wrap: wrap;
+            margin-top: 60px;
+        }
+
+        .outline-item {
+            position: relative;
+            padding: 30px 50px;
+            background: rgba(100, 200, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            border: 1px solid rgba(100, 200, 255, 0.3);
+            color: #ffffff;
+            font-size: 28px;
+            font-weight: 600;
+            min-width: 200px;
+            transition: all 0.3s ease;
+            animation: fadeInUp 1s ease-out;
+            animation-fill-mode: both;
+            cursor: pointer;
+        }
+
+        .outline-item:nth-child(1) {
+            animation-delay: 0.2s;
+        }
+
+        .outline-item:nth-child(2) {
+            animation-delay: 0.4s;
+        }
+
+        .outline-item:nth-child(3) {
+            animation-delay: 0.6s;
+        }
+
+        .outline-item:nth-child(4) {
+            animation-delay: 0.8s;
+        }
+
+        .outline-item:hover {
+            transform: translateY(-5px);
+            background: rgba(100, 200, 255, 0.2);
+            box-shadow: 0 10px 40px rgba(100, 200, 255, 0.3);
+        }
+
+        .outline-item::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(45deg, rgba(100, 200, 255, 0.5), transparent, rgba(100, 200, 255, 0.5));
+            border-radius: 20px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: -1;
+        }
+
+        .outline-item:hover::before {
+            opacity: 0.5;
+        }
+
+        /* 黑板窗口样式 */
+        .blackboard-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .blackboard-overlay.show {
+            display: flex;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        .blackboard {
+            position: relative;
+            width: 90%;
+            max-width: 1000px;
+            min-height: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+            background: linear-gradient(135deg, #1a472a 0%, #0d2818 100%);
+            border: 20px solid #2d5016;
+            border-radius: 10px;
+            box-shadow: 
+                0 0 0 10px #1a472a,
+                0 20px 60px rgba(0, 0, 0, 0.8),
+                inset 0 0 100px rgba(0, 0, 0, 0.3);
+            padding: 40px 50px;
+            text-align: center;
+            animation: slideUp 0.4s ease-out;
+            position: relative;
+            overflow: hidden;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* 黑板纹理效果 */
+        .blackboard::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                repeating-linear-gradient(
+                    0deg,
+                    transparent,
+                    transparent 2px,
+                    rgba(0, 0, 0, 0.03) 2px,
+                    rgba(0, 0, 0, 0.03) 4px
+                ),
+                repeating-linear-gradient(
+                    90deg,
+                    transparent,
+                    transparent 2px,
+                    rgba(0, 0, 0, 0.03) 2px,
+                    rgba(0, 0, 0, 0.03) 4px
+                );
+            pointer-events: none;
+        }
+
+        .blackboard-logo {
+            margin-bottom: 30px;
+            position: relative;
+            z-index: 5;
+        }
+
+        .blackboard-logo-text {
+            font-size: 36px;
+            font-weight: 900;
+            color: #ffffff;
+            text-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+            letter-spacing: 3px;
+        }
+
+        .blackboard-title {
+            font-size: 42px;
+            font-weight: 700;
+            color: #f0f0f0;
+            text-shadow: 
+                2px 2px 0px rgba(0, 0, 0, 0.5),
+                0 0 10px rgba(255, 255, 255, 0.1);
+            margin-bottom: 25px;
+            position: relative;
+            z-index: 5;
+            font-family: 'Courier New', monospace;
+            letter-spacing: 2px;
+        }
+
+        /* 粉笔文字效果 */
+        .blackboard-title::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(255, 255, 255, 0.03) 2px,
+                rgba(255, 255, 255, 0.03) 4px
+            );
+            pointer-events: none;
+        }
+
+        .blackboard-content {
+            font-size: 18px;
+            line-height: 1.5;
+            color: #f0f0f0;
+            text-align: left;
+            margin-top: 30px;
+            padding: 0 15px;
+            position: relative;
+            z-index: 5;
+            text-shadow: 
+                1px 1px 0px rgba(0, 0, 0, 0.5),
+                0 0 5px rgba(255, 255, 255, 0.1);
+            font-family: 'Courier New', monospace;
+            letter-spacing: 0.5px;
+        }
+
+        .blackboard-content::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(255, 255, 255, 0.02) 2px,
+                rgba(255, 255, 255, 0.02) 4px
+            );
+            pointer-events: none;
+        }
+
+        .feature-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .feature-list li {
+            margin: 15px 0;
+            padding-left: 30px;
+            position: relative;
+        }
+
+        .feature-list li::before {
+            content: '✓';
+            position: absolute;
+            left: 0;
+            color: #4ade80;
+            font-size: 22px;
+            font-weight: bold;
+        }
+
+        /* 宫格布局 */
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .feature-card {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .feature-card:hover {
+            background: rgba(0, 0, 0, 0.3);
+            border-color: rgba(100, 200, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .feature-card-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #ffffff;
+            margin-bottom: 10px;
+            text-shadow: 1px 1px 0px rgba(0, 0, 0, 0.5);
+        }
+
+        .feature-card-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .feature-card-list li {
+            font-size: 14px;
+            margin: 6px 0;
+            padding-left: 20px;
+            position: relative;
+            line-height: 1.4;
+        }
+
+        .feature-card-list li::before {
+            content: '•';
+            position: absolute;
+            left: 0;
+            color: #4ade80;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .code-block {
+            background: rgba(0, 0, 0, 0.3);
+            border-left: 4px solid #4ade80;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 16px;
+            overflow-x: auto;
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .title {
+                font-size: 48px;
+                margin-bottom: 20px;
+            }
+
+            .subtitle {
+                font-size: 24px;
+                margin-bottom: 40px;
+            }
+
+            .logo-text {
+                font-size: 48px;
+            }
+
+            .outline {
+                gap: 30px;
+            }
+
+            .outline-item {
+                font-size: 22px;
+                padding: 20px 30px;
+                min-width: 150px;
+            }
+
+            .blackboard {
+                width: 95%;
+                padding: 40px 30px;
+                min-height: 400px;
+            }
+
+            .blackboard-title {
+                font-size: 36px;
+            }
+
+            .blackboard-logo-text {
+                font-size: 36px;
+            }
+
+            .blackboard-content {
+                font-size: 18px;
+                padding: 0 10px;
+            }
+
+            .feature-grid {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+
+            .feature-card {
+                padding: 12px;
+            }
+
+            .feature-card-title {
+                font-size: 16px;
+            }
+
+            .feature-card-list li {
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="grid-background"></div>
+    <div class="light-effect"></div>
+    <div class="light-effect-2"></div>
+    <div class="light-effect-3"></div>
+    <div class="flow-line"></div>
+    <div class="flow-line"></div>
+    <div class="flow-line"></div>
+    <div class="flow-line"></div>
+    <div class="flow-line"></div>
+    <div class="flow-line"></div>
+    <div class="light-effect-4"></div>
+    <div class="light-effect-5"></div>
+    <div class="ring"></div>
+    <div class="ripple"></div>
+    <div class="ripple"></div>
+    <div class="ripple"></div>
+    <div class="gradient-band"></div>
+    <div class="gradient-band"></div>
+    <div class="gradient-band"></div>
+    <div class="star"></div>
+    <div class="star"></div>
+    <div class="star"></div>
+    <div class="star"></div>
+    <div class="star"></div>
+    <div class="star"></div>
+    <div class="star"></div>
+    <div class="star"></div>
+    <div class="star"></div>
+    <div class="star"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    
+    <div class="container">
+        <div class="logo">
+            <div class="logo-text">🔐 Wenzbak</div>
+        </div>
+        <h1 class="title">温知第三方数据同步系统</h1>
+        <p class="subtitle">帮助笔记类工具快速建立自己的数据备份功能</p>
+        
+        <div class="outline">
+            <div class="outline-item" onclick="toggleBlackboard('intro')">项目介绍</div>
+            <div class="outline-item" onclick="toggleBlackboard('features')">核心特性</div>
+            <div class="outline-item" onclick="toggleBlackboard('tech')">开源地址</div>
+            <div class="outline-item" onclick="toggleBlackboard('thanks')">感谢</div>
+        </div>
+    </div>
+
+    <!-- 项目介绍窗口 -->
+    <div class="blackboard-overlay" id="introOverlay" onclick="closeBlackboard('intro', event)">
+        <div class="blackboard" onclick="event.stopPropagation()">
+            <div class="blackboard-logo">
+                <div class="blackboard-logo-text">🔐 Wenzbak</div>
+            </div>
+            <h2 class="blackboard-title">项目介绍</h2>
+            <div class="blackboard-content">
+                <p><strong>Wenzbak</strong> 是一个专为笔记类应用设计的数据备份系统，提供完整的数据备份、同步和加密解决方案。</p>
+                <br>
+                <p>通过简单的 API 集成，让你的应用快速拥有企业级的数据备份能力。</p>
+                <br>
+                <p><strong>为什么选择 Wenzbak？</strong></p>
+                <ul class="feature-list">
+                    <li>开箱即用 - 几行代码即可集成完整的备份功能</li>
+                    <li>多存储支持 - 支持 S3、WebDAV、本地文件系统等多种存储后端</li>
+                    <li>数据安全 - 内置加密功能，保护用户隐私</li>
+                    <li>增量同步 - 智能增量备份，节省带宽和时间</li>
+                    <li>跨设备同步 - 支持多设备间的数据同步和消息推送</li>
+                    <li>轻量级 - 纯 Dart 实现，无额外依赖</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- 核心特性窗口 -->
+    <div class="blackboard-overlay" id="featuresOverlay" onclick="closeBlackboard('features', event)">
+        <div class="blackboard" onclick="event.stopPropagation()">
+            <div class="blackboard-logo">
+                <div class="blackboard-logo-text">✨ 核心特性</div>
+            </div>
+            <h2 class="blackboard-title">功能一览</h2>
+            <div class="blackboard-content">
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <div class="feature-card-title">📦 数据备份</div>
+                        <ul class="feature-card-list">
+                            <li>增量备份 - 只同步变更的数据</li>
+                            <li>数据合并 - 自动合并历史数据</li>
+                            <li>断点续传 - 支持自动重试</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-card-title">🔒 数据加密</div>
+                        <ul class="feature-card-list">
+                            <li>端到端加密 - AES 加密保护</li>
+                            <li>密钥隔离 - 多密钥管理</li>
+                            <li>可选加密 - 灵活配置</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-card-title">📁 文件管理</div>
+                        <ul class="feature-card-list">
+                            <li>文件上传 - 支持任意类型</li>
+                            <li>SHA256 校验 - 完整性验证</li>
+                            <li>临时文件 - 自动清理</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-card-title">💬 消息同步</div>
+                        <ul class="feature-card-list">
+                            <li>实时消息 - 跨设备推送</li>
+                            <li>消息队列 - 可靠传输</li>
+                            <li>自动重试 - 失败重试</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-card-title">🌐 多存储后端</div>
+                        <ul class="feature-card-list">
+                            <li>S3 兼容 - AWS S3、MinIO</li>
+                            <li>WebDAV - Nextcloud、OwnCloud</li>
+                            <li>本地文件 - 测试支持</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 开源地址窗口 -->
+    <div class="blackboard-overlay" id="techOverlay" onclick="closeBlackboard('tech', event)">
+        <div class="blackboard" onclick="event.stopPropagation()">
+            <div class="blackboard-logo">
+                <div class="blackboard-logo-text">🔗 开源地址</div>
+            </div>
+            <h2 class="blackboard-title">项目链接</h2>
+            <div class="blackboard-content">
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <div class="feature-card-title">📦 GitHub</div>
+                        <ul class="feature-card-list">
+                            <li>仓库地址</li>
+                            <li>github.com/lyming99/wenzbak</li>
+                            <li>欢迎 Star ⭐</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-card-title">📄 许可证</div>
+                        <ul class="feature-card-list">
+                            <li>Apache 2.0</li>
+                            <li>开源免费使用</li>
+                            <li>商业友好</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-card-title">🤝 贡献</div>
+                        <ul class="feature-card-list">
+                            <li>欢迎提交 Issue</li>
+                            <li>欢迎 Pull Request</li>
+                            <li>共同完善项目</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-card-title">📚 文档</div>
+                        <ul class="feature-card-list">
+                            <li>完整的使用文档</li>
+                            <li>丰富的示例代码</li>
+                            <li>详细的 API 说明</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 感谢窗口 -->
+    <div class="blackboard-overlay" id="thanksOverlay" onclick="closeBlackboard('thanks', event)">
+        <div class="blackboard" onclick="event.stopPropagation()">
+            <div class="blackboard-logo">
+                <div class="blackboard-logo-text">🙏 感谢</div>
+            </div>
+            <h2 class="blackboard-title">致谢</h2>
+            <div class="blackboard-content" style="text-align: center;">
+                <p style="font-size: 24px; margin: 30px 0;">
+                    感谢您的关注与支持！
+                </p>
+                <br>
+                <p style="font-size: 18px; margin: 15px 0;">
+                    <strong>GitHub:</strong> https://github.com/lyming99/wenzbak
+                </p>
+                <p style="font-size: 18px; margin: 15px 0;">
+                    <strong>许可证:</strong> Apache 2.0
+                </p>
+                <br>
+                <p style="font-size: 20px; margin: 30px 0;">
+                    如果这个项目对你有帮助，请给一个 ⭐ Star！
+                </p>
+                <br>
+                <p style="font-size: 18px; margin: 15px 0; color: rgba(255, 255, 255, 0.8);">
+                    Made with ❤️ by lyming99
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function openBlackboard(type) {
+            const overlay = document.getElementById(type + 'Overlay');
+            if (overlay) {
+                overlay.classList.add('show');
+                document.body.style.overflow = 'hidden';
+            }
+        }
+
+        function closeBlackboard(type, event) {
+            if (event) {
+                event.stopPropagation();
+            }
+            const overlay = document.getElementById(type + 'Overlay');
+            if (overlay) {
+                overlay.classList.remove('show');
+                document.body.style.overflow = '';
+            }
+        }
+
+        function toggleBlackboard(type) {
+            const overlay = document.getElementById(type + 'Overlay');
+            if (overlay) {
+                if (overlay.classList.contains('show')) {
+                    closeBlackboard(type, null);
+                } else {
+                    openBlackboard(type);
+                }
+            }
+        }
+
+        // 键盘快捷键
+        document.addEventListener('keydown', function(event) {
+            // 按1键切换项目介绍
+            if (event.key === '1') {
+                toggleBlackboard('intro');
+            }
+            // 按2键切换核心特性
+            else if (event.key === '2') {
+                toggleBlackboard('features');
+            }
+            // 按3键切换开源地址
+            else if (event.key === '3') {
+                toggleBlackboard('tech');
+            }
+            // 按4键切换感谢
+            else if (event.key === '4') {
+                toggleBlackboard('thanks');
+            }
+            // 按ESC键关闭当前打开的窗口
+            else if (event.key === 'Escape') {
+                const overlays = ['intro', 'features', 'tech', 'thanks'];
+                for (const type of overlays) {
+                    const overlay = document.getElementById(type + 'Overlay');
+                    if (overlay && overlay.classList.contains('show')) {
+                        closeBlackboard(type, event);
+                        break;
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
