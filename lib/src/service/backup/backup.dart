@@ -1,13 +1,7 @@
 import 'package:wenzbak/src/models/index.dart';
+import 'package:wenzbak/src/service/data/block_data.dart';
 import 'package:wenzbak/src/service/message/message.dart';
 
-/// 数据接收器
-/// 用于接收数据下载时解析出来的行数据
-abstract class WenzbakDataReceiver {
-  /// 接收一行数据
-  /// [line] 解析出来的数据行
-  Future onReceive(WenzbakDataLine line);
-}
 
 abstract class WenzbakClientService {
   /// 添加备份数据到系统
@@ -38,6 +32,12 @@ abstract class WenzbakClientService {
 
   /// 添加消息接收器
   void addMessageReceiver(MessageReceiver receiver);
+
+  /// 移除消息接收器
+  void removeMessageReceiver(MessageReceiver receiver);
+
+  /// 发送消息
+  Future<void> sendMessage(WenzbakMessage message);
 
   /// 启动消息Timer
   void startMessageTimer();

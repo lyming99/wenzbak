@@ -1,5 +1,4 @@
 import 'package:wenzbak/src/config/backup.dart';
-import 'package:wenzbak/src/models/line.dart';
 import 'package:wenzbak/src/service/data/block_data.dart';
 import 'package:wenzbak/src/service/data/impl/block_data_impl.dart';
 import 'package:wenzbak/src/service/file/file.dart';
@@ -30,6 +29,16 @@ class WenzbakClientServiceImpl extends WenzbakClientService {
   @override
   void addMessageReceiver(MessageReceiver receiver) {
     messageService.addMessageReceiver(receiver);
+  }
+
+  @override
+  void removeMessageReceiver(MessageReceiver receiver) {
+    messageService.removeMessageReceiver(receiver);
+  }
+
+  @override
+  Future<void> sendMessage(WenzbakMessage message) async {
+    await messageService.sendMessage(message);
   }
 
   @override

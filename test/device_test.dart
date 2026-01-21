@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:wenzbak/src/config/backup.dart';
 import 'package:wenzbak/src/models/device.dart';
-import 'package:wenzbak/src/service/device/device.dart';
 import 'package:wenzbak/src/service/device/impl/device_impl.dart';
 import 'package:wenzbak/src/service/storage/storage.dart';
 

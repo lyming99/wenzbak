@@ -1,5 +1,12 @@
 import 'package:wenzbak/src/models/index.dart';
-import 'package:wenzbak/src/service/backup/backup.dart';
+
+/// 数据接收器
+/// 用于接收数据下载时解析出来的行数据
+abstract class WenzbakDataReceiver {
+  /// 接收一行数据
+  /// [line] 解析出来的数据行
+  Future onReceive(WenzbakDataLine line);
+}
 
 /// 记录与查询数据块，通过本地数据库实现
 abstract class WenzbakBlockDataService {

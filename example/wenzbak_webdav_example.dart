@@ -1,11 +1,9 @@
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:uuid/uuid.dart';
 
 import 'package:wenzbak/src/config/backup.dart';
 import 'package:wenzbak/src/models/message.dart';
 import 'package:wenzbak/src/service/backup/impl/backup_impl.dart';
-import 'package:wenzbak/wenzbak.dart';
 
 void main() async {
   await device1();

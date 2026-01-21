@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:wenzbak/src/config/backup.dart';
 import 'package:wenzbak/src/models/index.dart';
 import 'package:wenzbak/src/service/backup/impl/backup_impl.dart';
-import 'package:wenzbak/wenzbak.dart';
+import 'package:wenzbak/src/service/data/block_data.dart';
 
 void main() async {
   await device1();

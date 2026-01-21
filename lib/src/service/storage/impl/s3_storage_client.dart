@@ -209,7 +209,7 @@ class S3StorageClient extends WenzbakStorageClientService {
       var value = canonicalHeaders[header] ?? '';
       canonicalHeadersList.add('$header:$value');
     }
-    var canonicalHeadersStr = canonicalHeadersList.join('\n') + '\n';
+    var canonicalHeadersStr = '${canonicalHeadersList.join('\n')}\n';
     
     var signedHeadersStr = signedHeaders.join(';');
     
