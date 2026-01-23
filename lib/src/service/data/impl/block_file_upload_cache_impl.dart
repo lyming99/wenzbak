@@ -36,8 +36,21 @@ class WenzbakBlockFileUploadCacheImpl implements WenzbakBlockFileUploadCache {
   @override
   Future<String?> getCurrentCacheFile(DateTime? dateTime) async {
     try {
+      var now = dateTime ?? DateTime.now();
+      // 生成当前小时的文件路径标识
+      // 格式：yyyy-MM-dd-HH
+      var dateStr = FileUtils.getTimeFilePath(now);
+      var cacheKey = dateStr;
+      // 如果缓存中已存在当前小时的文件，返回已有路径
+      if (_cache.containsKey(cacheKey)) {
+        return _cache[cacheKey];
+      }
+      var needWrite = false;
       var ret = await _lock.synchronized(() async {
-        var now = dateTime ?? DateTime.now();
+        // 如果缓存中已存在当前小时的文件，返回已有路径
+        if (_cache.containsKey(cacheKey)) {
+          return _cache[cacheKey];
+        }
         var blockDir = config.getLocalPublicBlockDir();
         // 确保目录存在
         var dir = Directory(blockDir);
@@ -45,20 +58,15 @@ class WenzbakBlockFileUploadCacheImpl implements WenzbakBlockFileUploadCache {
           await dir.create(recursive: true);
         }
 
-        // 生成当前小时的文件路径标识
-        // 格式：yyyy-MM-dd-HH
-        var dateStr = FileUtils.getTimeFilePath(now);
-        var cacheKey = dateStr;
-
-        // 如果缓存中已存在当前小时的文件，返回已有路径
-        if (_cache.containsKey(cacheKey)) {
-          return _cache[cacheKey];
-        }
+        needWrite = true;
         var fileName = Uuid().v4();
         _cache[cacheKey] = [blockDir, "$cacheKey-$fileName.txt"].join('/');
         return _cache[cacheKey];
       });
-      await writeCache();
+      if (needWrite) {
+        // 保存缓存
+        await writeCache();
+      }
       return ret;
     } finally {}
   }

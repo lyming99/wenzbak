@@ -4,14 +4,16 @@ import 'package:wenzbak/src/models/index.dart';
 /// 用于接收数据下载时解析出来的行数据
 abstract class WenzbakDataReceiver {
   /// 接收一行数据
-  /// [line] 解析出来的数据行
-  Future onReceive(WenzbakDataLine line);
+  /// [lines] 解析出来的数据行
+  Future onReceive(List<WenzbakDataLine> lines);
 }
 
 /// 记录与查询数据块，通过本地数据库实现
 abstract class WenzbakBlockDataService {
   /// 添加数据行
   Future<void> addBackupData(WenzbakDataLine line);
+
+  Future<void> addBackupDataList(List<WenzbakDataLine> line);
 
   /// 上传1小时前数据：每小时取余，1小时前不代表间隔1小时。
   /// 说明：数据记录按小时合并，避免文件数量过多。

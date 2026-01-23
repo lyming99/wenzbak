@@ -2,10 +2,9 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:synchronized/synchronized.dart';
 import 'package:uuid/uuid.dart';
 import 'package:wenzbak/src/config/backup.dart';
-import 'package:wenzbak/src/models/index.dart';
-import 'package:wenzbak/src/service/data/block_data.dart';
 import 'package:wenzbak/src/service/index/indexes.dart';
 import 'package:wenzbak/src/utils/file_line_reader_util.dart';
 import 'package:wenzbak/src/utils/file_utils.dart';
@@ -28,6 +27,10 @@ class _PathParseResult {
 /// 数据块管理器实现
 class WenzbakBlockDataServiceImpl implements WenzbakBlockDataService {
   final WenzbakConfig config;
+
+  /// 操作锁
+  final Lock _fileLock = Lock();
+
   late final WenzbakBlockFileUploadCache _blockFileUploadCache =
       WenzbakBlockFileUploadCacheImpl(config);
 
@@ -50,7 +53,37 @@ class WenzbakBlockDataServiceImpl implements WenzbakBlockDataService {
     if (txtPath == null) {
       return Future.error("未指定缓存文件");
     }
-    await FileUtils.appendLine(txtPath, data);
+    await _fileLock.synchronized(() async {
+      await FileUtils.appendLine(txtPath, data);
+    });
+  }
+
+  @override
+  Future<void> addBackupDataList(List<WenzbakDataLine> lines) async {
+    if (lines.isEmpty) {
+      return;
+    }
+    var lineMap = <String, List<String>>{};
+    for (var line in lines) {
+      var lineData = line.content;
+      if (lineData == null) {
+        continue;
+      }
+      var txtPath = await _blockFileUploadCache.getCurrentCacheFile(
+        line.createTime,
+      );
+      if (txtPath == null) {
+        continue;
+      }
+      lineMap.putIfAbsent(txtPath, () => []).add(lineData);
+    }
+    for (var entry in lineMap.entries) {
+      var txtPath = entry.key;
+      var values = entry.value;
+      await _fileLock.synchronized(() async {
+        await FileUtils.appendLine(txtPath, values.join("\n"));
+      });
+    }
   }
 
   /// 上传block数据
@@ -330,10 +363,21 @@ class WenzbakBlockDataServiceImpl implements WenzbakBlockDataService {
     var lineBytes = GZipUtil.decompressBytes(data);
     var lineString = utf8.decode(lineBytes);
     var lines = lineString.split("\n");
+    var lineCache = <WenzbakDataLine>[];
     for (var line in lines) {
-      for (var receiver in dataReceivers) {
-        receiver.onReceive(WenzbakDataLine(content: line));
+      lineCache.add(WenzbakDataLine(content: line));
+      if (lineCache.length >= 1000) {
+        for (var receiver in dataReceivers) {
+          receiver.onReceive(lineCache);
+        }
+        lineCache.clear();
       }
+    }
+    if (lineCache.isNotEmpty) {
+      for (var receiver in dataReceivers) {
+        receiver.onReceive(lineCache);
+      }
+      lineCache.clear();
     }
   }
 
@@ -397,14 +441,25 @@ class WenzbakBlockDataServiceImpl implements WenzbakBlockDataService {
       // 5.解压数据
       await GZipUtil.decompressFile(fileToRead, txtFile);
       // 6.发送数据给客户端处理
+      var lineCache = <WenzbakDataLine>[];
       await FileLineReaderUtil.readLinesSimple(
         txtFile,
         onLine: (line) async {
-          for (var receiver in dataReceivers) {
-            await receiver.onReceive(WenzbakDataLine(content: line));
+          lineCache.add(WenzbakDataLine(content: line));
+          if (lineCache.length >= 1000) {
+            for (var receiver in dataReceivers) {
+              await receiver.onReceive(lineCache);
+            }
+            lineCache.clear();
           }
         },
       );
+      if (lineCache.isNotEmpty) {
+        for (var receiver in dataReceivers) {
+          await receiver.onReceive(lineCache);
+        }
+        lineCache.clear();
+      }
       // 7.保存sha256到本地
       await writeLocalSha256(remotePath, remoteSha256);
     } finally {

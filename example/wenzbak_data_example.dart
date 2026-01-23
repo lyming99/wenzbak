@@ -87,7 +87,9 @@ Future<void> device2() async {
 
 class _WenzbakDataReceiver extends WenzbakDataReceiver {
   @override
-  Future onReceive(WenzbakDataLine line) async {
-    print("收到数据：${line.content}");
+  Future onReceive(lines) async {
+    for (var line in lines) {
+      print("接收到数据：${line.content}");
+    }
   }
 }

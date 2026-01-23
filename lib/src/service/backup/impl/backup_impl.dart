@@ -57,6 +57,11 @@ class WenzbakClientServiceImpl extends WenzbakClientService {
   }
 
   @override
+  Future<void> addBackupDataList(List<WenzbakDataLine> lines) async {
+    await dataService.addBackupDataList(lines);
+  }
+
+  @override
   Future<String?> uploadAssets(String localPath) async {
     return await fileService.uploadFile(localPath);
   }
@@ -102,7 +107,7 @@ class WenzbakClientServiceImpl extends WenzbakClientService {
   }
 
   @override
-  Future<void> uploadDeviceInfo([WenzbakDeviceInfo? deviceInfo]) async{
+  Future<void> uploadDeviceInfo([WenzbakDeviceInfo? deviceInfo]) async {
     await deviceService.uploadDeviceInfo();
   }
 }

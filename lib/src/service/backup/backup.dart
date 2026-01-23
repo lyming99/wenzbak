@@ -8,6 +8,8 @@ abstract class WenzbakClientService {
   /// 系统会自动将数据上传，失败会重新上传
   Future<void> addBackupData(WenzbakDataLine line);
 
+  Future<void> addBackupDataList(List<WenzbakDataLine> lines);
+
   /// 上传文件
   Future<String?> uploadAssets(String localPath);
 
