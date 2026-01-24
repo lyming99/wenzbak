@@ -27,17 +27,19 @@ class WenzbakFileServiceImpl implements WenzbakFileService {
     }
     var sha256File = "$savePath.sha256";
     if (await File(sha256File).exists() && await File(savePath).exists()) {
-      return savePath;
+      // 校验本地文件sha256
+      if (await File(sha256File).readAsString() ==
+          await Sha256Util.sha256File(savePath)) {
+        return savePath;
+      }
     }
     await _downloadFile(remotePath, savePath, sha256File);
     return savePath;
   }
 
-  Future _downloadFile(
-    String remotePath,
-    String savePath,
-    String sha256File,
-  ) async {
+  Future _downloadFile(String remotePath,
+      String savePath,
+      String sha256File,) async {
     var storage = WenzbakStorageClientService.getInstance(config);
     if (storage == null) {
       throw Exception("未配置存储服务");
