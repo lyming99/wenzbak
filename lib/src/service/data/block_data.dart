@@ -25,11 +25,14 @@ abstract class WenzbakBlockDataService {
   Future<void> downloadData(
     String remotePath,
     String? sha256,
-    Set<WenzbakDataReceiver> dataReceivers,
-  );
+    Set<WenzbakDataReceiver> dataReceivers, {
+    bool reload = false,
+  });
 
   /// 下载所有数据
   Future<void> downloadAllData(Set<WenzbakDataReceiver> dataReceivers);
+
+  Future<void> reloadAllData(Set<WenzbakDataReceiver> dataReceivers);
 
   /// 合并数据索引
   /// 1. 根据索引文件路径读取文件日期和时间

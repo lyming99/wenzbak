@@ -32,6 +32,8 @@ abstract class WenzbakClientService {
   /// 下载所有数据: 增量下载
   Future<void> downloadAllData();
 
+  Future<void> reloadAllData();
+
   /// 添加消息接收器
   void addMessageReceiver(MessageReceiver receiver);
 

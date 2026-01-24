@@ -53,6 +53,7 @@ class WenzbakBlockDataServiceImpl implements WenzbakBlockDataService {
     if (txtPath == null) {
       return Future.error("未指定缓存文件");
     }
+    print(txtPath);
     await _fileLock.synchronized(() async {
       await FileUtils.appendLine(txtPath, data);
     });
@@ -386,10 +387,11 @@ class WenzbakBlockDataServiceImpl implements WenzbakBlockDataService {
   Future<void> downloadData(
     String remotePath,
     String? sha256,
-    Set<WenzbakDataReceiver> dataReceivers,
-  ) async {
+    Set<WenzbakDataReceiver> dataReceivers, {
+    bool reload = false,
+  }) async {
     var localSha256 = await readLocalSha256(remotePath);
-    if (sha256 != null && localSha256 == sha256) {
+    if (!reload && sha256 != null && localSha256 == sha256) {
       // 对应的文件sha256已经下载，无需再次下载
       return;
     }
@@ -400,7 +402,7 @@ class WenzbakBlockDataServiceImpl implements WenzbakBlockDataService {
     // 读取remote sha256
     var remoteSha256Bytes = await storage.readFile("$remotePath.sha256");
     if (remoteSha256Bytes == null) {
-      throw "remote sha256 is null";
+      throw "remote sha256 is null: ${remotePath}.sha256";
     }
     var remoteSha256 = utf8.decode(remoteSha256Bytes);
     if (sha256 != null) {
@@ -410,7 +412,7 @@ class WenzbakBlockDataServiceImpl implements WenzbakBlockDataService {
         throw "remote sha256 is error";
       }
     }
-    if (localSha256 == remoteSha256) {
+    if (!reload && localSha256 == remoteSha256) {
       // 和本地索引一致，无需下载数据
       return;
     }
@@ -526,7 +528,49 @@ class WenzbakBlockDataServiceImpl implements WenzbakBlockDataService {
           var key = index.key;
           // sha256
           var value = index.value;
-          await downloadData(key, value, dataReceivers);
+          try {
+            await downloadData(key, value, dataReceivers);
+          } catch (e) {
+            print(e);
+          }
+        }
+      }
+    }
+  }
+
+  @override
+  Future<void> reloadAllData(Set<WenzbakDataReceiver> dataReceivers) async {
+    var storage = WenzbakStorageClientService.getInstance(config);
+    if (storage == null) {
+      throw "storage is null";
+    }
+    // 1.读取索引列表
+    var remoteBlockIndexPath = config.getRemoteBlockIndexDir();
+    var indexList = await storage.listFiles(remoteBlockIndexPath);
+    for (var indexFile in indexList) {
+      if (indexFile.isDir != true) {
+        var indexFilePath = indexFile.path;
+        if (indexFilePath == null) {
+          continue;
+        }
+        var bytes = await storage.readFile(indexFilePath);
+        if (bytes == null) {
+          continue;
+        }
+        var indexBytes = GZipUtil.decompressBytes(bytes);
+        var indexString = utf8.decode(indexBytes);
+        var indexMap = IndexUtil.readIndexMap(indexString);
+        // 2.根据索引下载数据
+        for (var index in indexMap.entries) {
+          // path
+          var key = index.key;
+          // sha256
+          var value = index.value;
+          try {
+            await downloadData(key, value, dataReceivers, reload: true);
+          } catch (e) {
+            print(e);
+          }
         }
       }
     }

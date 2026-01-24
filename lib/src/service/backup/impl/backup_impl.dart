@@ -78,7 +78,16 @@ class WenzbakClientServiceImpl extends WenzbakClientService {
 
   @override
   Future<void> downloadAllData() async {
+    print("开始下载数据");
     await dataService.downloadAllData(dataReceivers);
+    print("下载数据完成");
+  }
+
+  @override
+  Future<void> reloadAllData() async {
+    print("开始重新下载数据");
+    await dataService.reloadAllData(dataReceivers);
+    print("重新下载数据完成");
   }
 
   @override
