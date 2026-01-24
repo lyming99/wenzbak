@@ -21,10 +21,11 @@ class WenzbakFileServiceImpl implements WenzbakFileService {
     if (savePath == null) {
       return null;
     }
+    await FileUtils.createParentDir(savePath);
     if (savePath.endsWith(".enc")) {
       savePath = savePath.substring(0, savePath.length - 4);
     }
-    var sha256File = "$name.sha256";
+    var sha256File = "$savePath.sha256";
     if (await File(sha256File).exists() && await File(savePath).exists()) {
       return savePath;
     }
