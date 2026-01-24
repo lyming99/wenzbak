@@ -2,7 +2,6 @@ import 'package:wenzbak/src/models/index.dart';
 import 'package:wenzbak/src/service/data/block_data.dart';
 import 'package:wenzbak/src/service/message/message.dart';
 
-
 abstract class WenzbakClientService {
   /// 添加备份数据到系统
   /// 系统会自动将数据上传，失败会重新上传
@@ -13,8 +12,14 @@ abstract class WenzbakClientService {
   /// 上传文件
   Future<String?> uploadAssets(String localPath);
 
+  /// 获取文件路径
+  String? getRemoteAssetsPath(String localPath);
+
   /// 上传临时文件
   Future<String?> uploadTempAssets(String localPath);
+
+  /// 获取临时文件路径
+  String? getRemoteTempAssetsPath(String localPath);
 
   /// 添加数据接收器
   void addDataReceiver(WenzbakDataReceiver receiver);

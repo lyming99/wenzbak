@@ -6,4 +6,8 @@ abstract class WenzbakFileService {
   Future<String?> uploadTempFile(String localPath);
 
   Future<void> deleteTempFile();
+
+  String? getAssetsPath(String localPath);
+
+  String? getTempAssetsPath(String localPath);
 }

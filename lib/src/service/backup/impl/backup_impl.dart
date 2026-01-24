@@ -67,8 +67,18 @@ class WenzbakClientServiceImpl extends WenzbakClientService {
   }
 
   @override
+  String? getRemoteAssetsPath(String localPath)  {
+    return fileService.getAssetsPath(localPath);
+  }
+
+  @override
   Future<String?> uploadTempAssets(String localPath) async {
     return await fileService.uploadTempFile(localPath);
+  }
+
+  @override
+  String? getRemoteTempAssetsPath(String localPath)  {
+    return fileService.getTempAssetsPath(localPath);
   }
 
   @override

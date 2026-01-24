@@ -42,6 +42,7 @@ class WenzbakMessageServiceImpl extends WenzbakMessageService {
     _messageTimer = Timer.periodic(Duration(seconds: 5), (timer) {
       readMessage();
     });
+    readMessage();
   }
 
   @override

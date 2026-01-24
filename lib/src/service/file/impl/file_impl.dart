@@ -337,4 +337,26 @@ class WenzbakFileServiceImpl implements WenzbakFileService {
     var pattern = RegExp(r'^\d{4}-\d{2}-\d{2}-\d{2}$');
     return pattern.hasMatch(str);
   }
+
+  @override
+  String? getAssetsPath(String localPath) {
+    var storage = WenzbakStorageClientService.getInstance(config);
+    if (storage == null) {
+      throw Exception("未配置存储服务");
+    }
+    var fileName = FileUtils.getFileName(localPath);
+    var remoteAssetPath = config.getRemoteAssetPath();
+    return [remoteAssetPath, fileName].join('/');
+  }
+
+  @override
+  String? getTempAssetsPath(String localPath) {
+    var storage = WenzbakStorageClientService.getInstance(config);
+    if (storage == null) {
+      throw Exception("未配置存储服务");
+    }
+    var fileName = FileUtils.getFileName(localPath);
+    var remoteTempAssetsPath = config.getRemoteTempAssetPath();
+    return [remoteTempAssetsPath, fileName].join('/');
+  }
 }
