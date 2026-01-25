@@ -138,33 +138,37 @@ class WenzbakMessageDownloadServiceImpl extends WenzbakMessageDownloadService {
             continue;
           }
 
-          // 检查文件是否更新（通过 sha256）
-          var remoteSha256File = "$filePath.sha256";
-          var remoteSha256Bytes = await storage.readFile(remoteSha256File);
-          if (remoteSha256Bytes == null) {
-            continue;
-          }
-          var remoteSha256 = utf8.decode(remoteSha256Bytes).trim();
-          var localSha256 = _fileSha256Cache[filePath];
+          for (var i = 0; i < 3; i++) {
+            // 检查文件是否更新（通过 sha256）
+            var remoteSha256File = "$filePath.sha256";
+            var remoteSha256Bytes = await storage.readFile(remoteSha256File);
+            if (remoteSha256Bytes == null) {
+              break;
+            }
+            var remoteSha256 = utf8.decode(remoteSha256Bytes).trim();
+            var localSha256 = _fileSha256Cache[filePath];
 
-          if (localSha256 == remoteSha256) {
-            // 文件未更新，跳过
-            continue;
-          }
-
-          // 4. 下载并解析消息文件
-          try {
-            await _downloadAndParseMessageFile(
-              filePath,
-              receivers,
-              deviceId,
-              remoteSha256,
-            );
-            // 更新 sha256 缓存
-            _fileSha256Cache[filePath] = remoteSha256;
-          } catch (e) {
-            // 忽略单个文件下载失败，继续处理其他文件
-            print('下载消息文件失败: $filePath, 错误: $e');
+            if (localSha256 == remoteSha256) {
+              // 文件未更新，跳过
+              break;
+            }
+            // 4. 下载并解析消息文件
+            try {
+              await _downloadAndParseMessageFile(
+                filePath,
+                receivers,
+                deviceId,
+                remoteSha256,
+              );
+              // 更新 sha256 缓存
+              _fileSha256Cache[filePath] = remoteSha256;
+              break;
+            } catch (e) {
+              // 忽略单个文件下载失败，继续处理其他文件
+              print('下载消息文件失败: $filePath, 错误: $e');
+              await Future.delayed(Duration(seconds: 1));
+              continue;
+            }
           }
         }
 
