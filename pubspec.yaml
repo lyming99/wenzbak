@@ -8,7 +8,7 @@ environment:
 
 # Add regular dependencies here.
 dependencies:
-  sqflite: ^2.3.0
+#  sqflite: ^2.3.0
   path: ^1.8.0
   crypto: ^3.0.0
   encrypt: ^5.0.0
