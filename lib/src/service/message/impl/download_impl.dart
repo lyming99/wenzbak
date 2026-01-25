@@ -50,7 +50,7 @@ class WenzbakMessageDownloadServiceImpl extends WenzbakMessageDownloadService {
         var remoteMsgLockFile = [devicePath, "msg.lock"].join("/");
         var lockBytes = await storage.readFile(remoteMsgLockFile);
 
-        if (lockBytes == null) {
+        if (lockBytes == null || lockBytes.length < 16) {
           // 没有锁文件，跳过该设备
           continue;
         }
@@ -186,12 +186,10 @@ class WenzbakMessageDownloadServiceImpl extends WenzbakMessageDownloadService {
   }
 
   /// 下载并解析消息文件
-  Future<void> _downloadAndParseMessageFile(
-    String remoteFilePath,
-    Iterable<MessageReceiver> receivers,
-    String deviceId,
-    String remoteSha256,
-  ) async {
+  Future<void> _downloadAndParseMessageFile(String remoteFilePath,
+      Iterable<MessageReceiver> receivers,
+      String deviceId,
+      String remoteSha256,) async {
     var storage = WenzbakStorageClientService.getInstance(config);
     if (storage == null) {
       throw "未配置存储服务";

@@ -58,7 +58,7 @@ class WenzbakMessageLock {
   /// 格式：timestamp(8字节) + msgTimestamp(8字节)
   static WenzbakMessageLock fromBytes(Uint8List bytes) {
     if (bytes.length < 16) {
-      throw ArgumentError('字节数组长度不足，需要至少24字节，实际为${bytes.length}字节');
+      throw ArgumentError('字节数组长度不足，需要至少16字节，实际为${bytes.length}字节');
     }
 
     final byteData = ByteData.sublistView(bytes);
