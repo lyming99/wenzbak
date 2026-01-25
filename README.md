@@ -93,12 +93,61 @@ dependencies:
 
 #### 1. 配置存储后端
 
-**使用 S3/MinIO：**
+**方式一：直接注入 Storage 实例（推荐）**
+
+```dart
+import 'package:wenzbak/wenzbak.dart';
+import 'package:wenzbak/src/service/storage/impl/s3_storage_client.dart';
+import 'package:wenzbak/src/service/storage/impl/webdav_storage_client.dart';
+import 'package:wenzbak/src/service/storage/impl/file_storage_client.dart';
+
+// S3/MinIO
+final s3Storage = S3StorageClient(
+  config,
+  'http://localhost:9000',
+  'minioadmin',
+  'minioadmin',
+  'wenzbak',
+  'us-east-1',
+);
+var config = WenzbakConfig(
+  deviceId: 'device-001',
+  localRootPath: './local_backup',
+  remoteRootPath: 'wenzbak',
+  storage: s3Storage,  // 直接注入
+);
+
+// WebDAV
+final webdavStorage = WebDAVStorageClient(
+  config,
+  'http://localhost:8080',
+  'webdav',
+  'webdav',
+);
+var config = WenzbakConfig(
+  deviceId: 'device-001',
+  localRootPath: './local_backup',
+  remoteRootPath: 'wenzbak',
+  storage: webdavStorage,  // 直接注入
+);
+
+// 本地文件
+final fileStorage = FileStorageClient(config, '/path/to/storage');
+var config = WenzbakConfig(
+  deviceId: 'device-001',
+  localRootPath: './local_backup',
+  remoteRootPath: 'wenzbak',
+  storage: fileStorage,  // 直接注入
+);
+```
+
+**方式二：使用配置字符串（兼容旧方式）**
 
 ```dart
 import 'dart:convert';
 import 'package:wenzbak/wenzbak.dart';
 
+// S3/MinIO
 var s3Config = {
   'endpoint': 'http://localhost:9000',
   'accessKey': 'minioadmin',
@@ -114,11 +163,8 @@ var config = WenzbakConfig(
   storageType: 's3',
   storageConfig: jsonEncode(s3Config),
 );
-```
 
-**使用 WebDAV：**
-
-```dart
+// WebDAV
 var webdavConfig = {
   'url': 'http://localhost:8080',
   'username': 'webdav',
@@ -133,6 +179,8 @@ var config = WenzbakConfig(
   storageConfig: jsonEncode(webdavConfig),
 );
 ```
+
+> **注意**：推荐使用方式一直接注入 Storage 实例，这样可以更好地支持自定义 Storage 实现和单元测试。
 
 #### 2. 创建客户端
 

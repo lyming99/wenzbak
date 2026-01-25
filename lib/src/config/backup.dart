@@ -1,3 +1,4 @@
+import 'package:wenzbak/src/service/storage/storage.dart';
 import 'package:wenzbak/src/utils/file_utils.dart';
 
 /// 温知备份系统配置类
@@ -8,6 +9,10 @@ class WenzbakConfig {
   final String? secretKey;
   final String? secret;
   final bool encryptFile;
+
+  /// 直接注入的 Storage 实例（优先使用）
+  /// 如果为 null，则使用 storageType + storageConfig 创建
+  final WenzbakStorageClientService? storage;
 
   /// 存储类型: 'file', 'webdav', 's3'
   final String? storageType;
@@ -25,6 +30,7 @@ class WenzbakConfig {
     this.secretKey,
     this.secret,
     this.encryptFile = false,
+    this.storage,
     this.storageType,
     this.storageConfig,
   });

@@ -43,7 +43,16 @@ abstract class WenzbakStorageClientService {
 
   Future<void> writeRange(String path, int start, Uint8List data);
 
+  /// 获取或创建 Storage 实例
+  /// 1. 优先返回 config.storage（直接注入的实例）
+  /// 2. 如果为 null，根据 storageType + storageConfig 创建
   static WenzbakStorageClientService? getInstance(WenzbakConfig config) {
+    // 优先使用直接注入的 Storage 实例
+    if (config.storage != null) {
+      return config.storage;
+    }
+
+    // 回退到旧的配置方式
     var storageType = config.storageType?.toLowerCase();
     var storageConfig = config.storageConfig;
 
