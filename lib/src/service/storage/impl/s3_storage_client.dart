@@ -52,10 +52,10 @@ class S3StorageClient extends WenzbakStorageClientService {
     var base = endpoint.endsWith('/') ? endpoint.substring(0, endpoint.length - 1) : endpoint;
     if (base.contains('://')) {
       // 如果 endpoint 包含协议，直接使用
-      return '$base/$bucket/$objectKey';
+      return '$base/$objectKey';
     } else {
       // 否则使用 https
-      return 'https://$base/$bucket/$objectKey';
+      return 'https://$base/$objectKey';
     }
   }
 
@@ -183,20 +183,16 @@ class S3StorageClient extends WenzbakStorageClientService {
       signedHeaders.add('x-amz-date');
     }
     
-    // 计算 payload hash（在添加 x-amz-content-sha256 之前）
+    // 计算 payload hash
     var payloadHash = sha256.convert(payload ?? Uint8List(0)).toString();
-    
-    // 对于有 payload 的请求，添加 x-amz-content-sha256 头
-    // 注意：这个头必须在签名计算之前添加，并且必须在 headers 参数中传入
-    // 如果 headers 中已经包含了 x-amz-content-sha256，使用传入的值
-    // 否则，如果有 payload，自动添加
-    if (payload != null && payload.isNotEmpty) {
-      var lowerKey = 'x-amz-content-sha256';
-      if (!canonicalHeaders.containsKey(lowerKey)) {
-        canonicalHeaders[lowerKey] = payloadHash;
-        if (!signedHeaders.contains(lowerKey)) {
-          signedHeaders.add(lowerKey);
-        }
+
+    // 对于所有请求，如果 headers 中已经包含了 x-amz-content-sha256，使用传入的值
+    // 否则，使用计算出的 payloadHash
+    var lowerKey = 'x-amz-content-sha256';
+    if (!canonicalHeaders.containsKey(lowerKey)) {
+      canonicalHeaders[lowerKey] = payloadHash;
+      if (!signedHeaders.contains(lowerKey)) {
+        signedHeaders.add(lowerKey);
       }
     }
     
@@ -286,7 +282,7 @@ class S3StorageClient extends WenzbakStorageClientService {
       'Content-Type': 'application/octet-stream',
       'x-amz-content-sha256': payloadHash,
     });
-    var authorization = _signRequest('PUT', '/$bucket/$objectKey', headers, bytes, timestamp['dateStamp']!, timestamp['amzDate']!);
+    var authorization = _signRequest('PUT', '/$objectKey', headers, bytes, timestamp['dateStamp']!, timestamp['amzDate']!);
     
     // 构建最终请求头（必须与签名时完全一致）
     var finalHeaders = <String, String>{
@@ -323,12 +319,17 @@ class S3StorageClient extends WenzbakStorageClientService {
   Future<void> downloadFile(String path, String localFilepath) async {
     var objectKey = _getObjectKey(path);
     var url = _getUrl(objectKey);
-    
+
     var timestamp = _getTimestamp();
-    var headers = _getHeaders('GET', objectKey);
-    var authorization = _signRequest('GET', '/$bucket/$objectKey', headers, null, timestamp['dateStamp']!, timestamp['amzDate']!);
+    // 计算空 payload 的 hash（GET 请求没有 body）
+    var payloadHash = sha256.convert(Uint8List(0)).toString();
+    var headers = _getHeaders('GET', objectKey, additional: {
+      'x-amz-content-sha256': payloadHash,
+    });
+    var authorization = _signRequest('GET', '/$objectKey', headers, null, timestamp['dateStamp']!, timestamp['amzDate']!);
     headers['Authorization'] = authorization;
     headers['x-amz-date'] = timestamp['amzDate']!;
+    headers['x-amz-content-sha256'] = payloadHash;
 
     var response = await _client.get(
       Uri.parse(url),
@@ -347,12 +348,16 @@ class S3StorageClient extends WenzbakStorageClientService {
   Future<void> deleteFile(String path) async {
     var objectKey = _getObjectKey(path);
     var url = _getUrl(objectKey);
-    
+
     var timestamp = _getTimestamp();
-    var headers = _getHeaders('DELETE', objectKey);
-    var authorization = _signRequest('DELETE', '/$bucket/$objectKey', headers, null, timestamp['dateStamp']!, timestamp['amzDate']!);
+    var payloadHash = sha256.convert(Uint8List(0)).toString();
+    var headers = _getHeaders('DELETE', objectKey, additional: {
+      'x-amz-content-sha256': payloadHash,
+    });
+    var authorization = _signRequest('DELETE', '/$objectKey', headers, null, timestamp['dateStamp']!, timestamp['amzDate']!);
     headers['Authorization'] = authorization;
     headers['x-amz-date'] = timestamp['amzDate']!;
+    headers['x-amz-content-sha256'] = payloadHash;
 
     var response = await _client.delete(
       Uri.parse(url),
@@ -372,12 +377,16 @@ class S3StorageClient extends WenzbakStorageClientService {
       objectKey = '$objectKey/';
     }
     var url = _getUrl(objectKey);
-    
+
     var timestamp = _getTimestamp();
-    var headers = _getHeaders('PUT', objectKey);
-    var authorization = _signRequest('PUT', '/$bucket/$objectKey', headers, Uint8List(0), timestamp['dateStamp']!, timestamp['amzDate']!);
+    var payloadHash = sha256.convert(Uint8List(0)).toString();
+    var headers = _getHeaders('PUT', objectKey, additional: {
+      'x-amz-content-sha256': payloadHash,
+    });
+    var authorization = _signRequest('PUT', '/$objectKey', headers, Uint8List(0), timestamp['dateStamp']!, timestamp['amzDate']!);
     headers['Authorization'] = authorization;
     headers['x-amz-date'] = timestamp['amzDate']!;
+    headers['x-amz-content-sha256'] = payloadHash;
 
     var response = await _client.put(
       Uri.parse(url),
@@ -421,10 +430,14 @@ class S3StorageClient extends WenzbakStorageClientService {
     var url = '${_getUrl('')}?$queryString';
     
     var timestamp = _getTimestamp();
-    var headers = _getHeaders('GET', '');
-    var authorization = _signRequest('GET', '/$bucket/', headers, null, timestamp['dateStamp']!, timestamp['amzDate']!, queryString: queryString);
+    var payloadHash = sha256.convert(Uint8List(0)).toString();
+    var headers = _getHeaders('GET', '', additional: {
+      'x-amz-content-sha256': payloadHash,
+    });
+    var authorization = _signRequest('GET', '/', headers, null, timestamp['dateStamp']!, timestamp['amzDate']!, queryString: queryString);
     headers['Authorization'] = authorization;
     headers['x-amz-date'] = timestamp['amzDate']!;
+    headers['x-amz-content-sha256'] = payloadHash;
 
     var response = await _client.get(
       Uri.parse(url),
@@ -465,12 +478,16 @@ class S3StorageClient extends WenzbakStorageClientService {
   Future<Uint8List?> readFile(String path) async {
     var objectKey = _getObjectKey(path);
     var url = _getUrl(objectKey);
-    
+
     var timestamp = _getTimestamp();
-    var headers = _getHeaders('GET', objectKey);
-    var authorization = _signRequest('GET', '/$bucket/$objectKey', headers, null, timestamp['dateStamp']!, timestamp['amzDate']!);
+    var payloadHash = sha256.convert(Uint8List(0)).toString();
+    var headers = _getHeaders('GET', objectKey, additional: {
+      'x-amz-content-sha256': payloadHash,
+    });
+    var authorization = _signRequest('GET', '/$objectKey', headers, null, timestamp['dateStamp']!, timestamp['amzDate']!);
     headers['Authorization'] = authorization;
     headers['x-amz-date'] = timestamp['amzDate']!;
+    headers['x-amz-content-sha256'] = payloadHash;
 
     var response = await _client.get(
       Uri.parse(url),
@@ -491,12 +508,16 @@ class S3StorageClient extends WenzbakStorageClientService {
   Future<int> readFileSize(String path) async {
     var objectKey = _getObjectKey(path);
     var url = _getUrl(objectKey);
-    
+
     var timestamp = _getTimestamp();
-    var headers = _getHeaders('HEAD', objectKey);
-    var authorization = _signRequest('HEAD', '/$bucket/$objectKey', headers, null, timestamp['dateStamp']!, timestamp['amzDate']!);
+    var payloadHash = sha256.convert(Uint8List(0)).toString();
+    var headers = _getHeaders('HEAD', objectKey, additional: {
+      'x-amz-content-sha256': payloadHash,
+    });
+    var authorization = _signRequest('HEAD', '/$objectKey', headers, null, timestamp['dateStamp']!, timestamp['amzDate']!);
     headers['Authorization'] = authorization;
     headers['x-amz-date'] = timestamp['amzDate']!;
+    headers['x-amz-content-sha256'] = payloadHash;
 
     var response = await _client.head(
       Uri.parse(url),
@@ -532,7 +553,7 @@ class S3StorageClient extends WenzbakStorageClientService {
       'Content-Type': 'application/octet-stream',
       'x-amz-content-sha256': payloadHash,
     });
-    var authorization = _signRequest('PUT', '/$bucket/$objectKey', headers, data, timestamp['dateStamp']!, timestamp['amzDate']!);
+    var authorization = _signRequest('PUT', '/$objectKey', headers, data, timestamp['dateStamp']!, timestamp['amzDate']!);
     
     // 构建最终请求头（必须与签名时完全一致）
     var finalHeaders = <String, String>{
@@ -570,14 +591,17 @@ class S3StorageClient extends WenzbakStorageClientService {
   Future<Uint8List> readRange(String path, int start, int length) async {
     var objectKey = _getObjectKey(path);
     var url = _getUrl(objectKey);
-    
+
     var timestamp = _getTimestamp();
+    var payloadHash = sha256.convert(Uint8List(0)).toString();
     var headers = _getHeaders('GET', objectKey, additional: {
       'Range': 'bytes=$start-${start + length - 1}',
+      'x-amz-content-sha256': payloadHash,
     });
-    var authorization = _signRequest('GET', '/$bucket/$objectKey', headers, null, timestamp['dateStamp']!, timestamp['amzDate']!);
+    var authorization = _signRequest('GET', '/$objectKey', headers, null, timestamp['dateStamp']!, timestamp['amzDate']!);
     headers['Authorization'] = authorization;
     headers['x-amz-date'] = timestamp['amzDate']!;
+    headers['x-amz-content-sha256'] = payloadHash;
 
     var response = await _client.get(
       Uri.parse(url),

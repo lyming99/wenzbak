@@ -34,163 +34,23 @@ class WenzbakMessageDownloadServiceImpl extends WenzbakMessageDownloadService {
     if (storage == null) {
       throw "未配置存储服务";
     }
-    var startTime = DateTime
-        .now()
-        .millisecondsSinceEpoch;
+    var startTime = DateTime.now().millisecondsSinceEpoch;
     // 1. 读取设备列表
     var deviceService = WenzbakDeviceService.getInstance(config);
     var deviceIds = await deviceService.queryDeviceIdList();
-    print("查询设备耗时：${DateTime
-        .now()
-        .millisecondsSinceEpoch - startTime} ms");
+    print("查询设备耗时：${DateTime.now().millisecondsSinceEpoch - startTime} ms");
     // 2. 遍历每个设备，读取 msg.lock 并判断是否有新消息
     var remoteMsgRootPath = config.getRemoteMessageRootPath();
+    var futures = <Future>[];
     for (var deviceId in deviceIds) {
       if (deviceId == config.deviceId) {
         continue;
       }
-      var time = DateTime
-          .now()
-          .millisecondsSinceEpoch;
-      try {
-        var devicePath = [remoteMsgRootPath, deviceId].join("/");
-        var remoteMsgLockFile = [devicePath, "msg.lock"].join("/");
-        var lockBytes = await storage.readFile(remoteMsgLockFile);
-
-        print("读取lock：${DateTime
-            .now()
-            .millisecondsSinceEpoch - time} ms");
-        if (lockBytes == null || lockBytes.length < 16) {
-          // 没有锁文件，跳过该设备
-          continue;
-        }
-
-        var remoteLock = WenzbakMessageLock.fromBytes(lockBytes);
-        var localLock = _deviceLockCache[deviceId];
-
-        // 判断是否有新消息：心跳时间或消息时间有更新
-        bool hasNewMessage = false;
-        if (localLock == null) {
-          hasNewMessage = true;
-        } else {
-          // 心跳时间更新或消息时间更新，说明有新消息
-          if (remoteLock.timestamp != null &&
-              (localLock.timestamp == null ||
-                  remoteLock.timestamp! > localLock.timestamp!)) {
-            hasNewMessage = true;
-          }
-          if (remoteLock.msgTimestamp != null &&
-              (localLock.msgTimestamp == null ||
-                  remoteLock.msgTimestamp! > localLock.msgTimestamp!)) {
-            hasNewMessage = true;
-          }
-        }
-
-        if (!hasNewMessage) {
-          // 没有新消息，跳过该设备
-          continue;
-        }
-
-        // 3. 读取设备消息文件：sha256 判断文件是否被更新，只读取近2小时的数据
-        var deviceFiles = await storage.listFiles(devicePath);
-
-        print("查询消息文件：${DateTime
-            .now()
-            .millisecondsSinceEpoch - time} ms");
-        // 先找到所有消息文件的最大时间
-        DateTime? maxFileTime;
-        for (var file in deviceFiles) {
-          var filePath = file.path;
-          var isDir = file.isDir;
-          if (isDir == true || filePath == null) {
-            continue;
-          }
-
-          var filename = FileUtils.getFileName(filePath);
-          // 只处理消息文件：.msg.gz 或 .msg.gz.enc
-          if (!filename.contains('.msg-') || filename.endsWith('.sha256')) {
-            continue;
-          }
-
-          // 解析文件名中的时间信息
-          DateTime? fileTime = _parseTimeFromFilename(filename);
-          if (fileTime != null) {
-            if (maxFileTime == null || fileTime.isAfter(maxFileTime)) {
-              maxFileTime = fileTime;
-            }
-          }
-        }
-
-        // 计算最大时间近2小时的时间点
-        if (maxFileTime == null) {
-          continue;
-        }
-        var twoHoursBeforeMaxTime = maxFileTime.subtract(Duration(hours: 2));
-
-        // 只处理最大时间近2小时内的文件
-        for (var file in deviceFiles) {
-          var filePath = file.path;
-          var isDir = file.isDir;
-          if (isDir == true || filePath == null) {
-            continue;
-          }
-
-          var filename = FileUtils.getFileName(filePath);
-          // 只处理消息文件：.msg.gz 或 .msg.gz.enc
-          if (!filename.contains('.msg-') || filename.endsWith('.sha256')) {
-            continue;
-          }
-
-          // 解析文件名中的时间信息，只处理最大时间近2小时的文件
-          DateTime? fileTime = _parseTimeFromFilename(filename);
-          if (fileTime == null) {
-            continue;
-          }
-          if (fileTime.isBefore(twoHoursBeforeMaxTime) ||
-              fileTime.isAfter(maxFileTime)) {
-            continue;
-          }
-
-          // 检查文件是否更新（通过 sha256）
-          var remoteSha256File = "$filePath.sha256";
-          var remoteSha256Bytes = await storage.readFile(remoteSha256File);
-          if (remoteSha256Bytes == null) {
-            continue;
-          }
-          var remoteSha256 = utf8.decode(remoteSha256Bytes).trim();
-          var localSha256 = _fileSha256Cache[filePath];
-
-          if (localSha256 == remoteSha256) {
-            // 文件未更新，跳过
-            continue;
-          }
-          // 4. 下载并解析消息文件
-          try {
-            await _downloadAndParseMessageFile(
-              filePath,
-              receivers,
-              deviceId,
-              remoteSha256,
-            );
-            // 更新 sha256 缓存
-            _fileSha256Cache[filePath] = remoteSha256;
-          } catch (e) {
-            // 忽略单个文件下载失败，继续处理其他文件
-            print('下载消息文件失败: $filePath, 错误: $e');
-          }
-        }
-
-        print("下载解析消息文件：${DateTime
-            .now()
-            .millisecondsSinceEpoch - time} ms");
-        // 更新设备锁缓存
-        _deviceLockCache[deviceId] = remoteLock;
-      } catch (e) {
-        // 忽略单个设备处理失败，继续处理其他设备
-        print('处理设备消息失败: $deviceId, 错误: $e');
-      }
+      futures.add(
+        _readDeviceMessage(remoteMsgRootPath, deviceId, storage, receivers),
+      );
     }
-
+    await Future.wait(futures);
     // 清理2小时之前的文件 sha256 缓存
     _cleanOldFileSha256Cache();
 
@@ -198,16 +58,171 @@ class WenzbakMessageDownloadServiceImpl extends WenzbakMessageDownloadService {
     await _saveProcessedMessageUuids();
     await _saveFileSha256Cache();
     await _saveDeviceLockCache();
-    print("读取消息总耗时：${DateTime
-        .now()
-        .millisecondsSinceEpoch - startTime} ms");
+    print("读取消息总耗时：${DateTime.now().millisecondsSinceEpoch - startTime} ms");
+  }
+
+  Future<void> _readDeviceMessage(
+    String remoteMsgRootPath,
+    String deviceId,
+    WenzbakStorageClientService storage,
+    Iterable<MessageReceiver> receivers,
+  ) async {
+    try {
+      var devicePath = [remoteMsgRootPath, deviceId].join("/");
+      var remoteMsgLockFile = [devicePath, "msg.lock"].join("/");
+      var lockBytes = await storage.readFile(remoteMsgLockFile);
+      if (lockBytes == null || lockBytes.length < 16) {
+        // 没有锁文件，跳过该设备
+        return;
+      }
+
+      var remoteLock = WenzbakMessageLock.fromBytes(lockBytes);
+      var localLock = _deviceLockCache[deviceId];
+
+      // 判断是否有新消息：心跳时间或消息时间有更新
+      bool hasNewMessage = false;
+      if (localLock == null) {
+        hasNewMessage = true;
+      } else {
+        // 心跳时间更新或消息时间更新，说明有新消息
+        if (remoteLock.timestamp != null &&
+            (localLock.timestamp == null ||
+                remoteLock.timestamp! > localLock.timestamp!)) {
+          hasNewMessage = true;
+        }
+        if (remoteLock.msgTimestamp != null &&
+            (localLock.msgTimestamp == null ||
+                remoteLock.msgTimestamp! > localLock.msgTimestamp!)) {
+          hasNewMessage = true;
+        }
+      }
+
+      if (!hasNewMessage) {
+        // 没有新消息，跳过该设备
+        return;
+      }
+
+      // 3. 读取设备消息文件：sha256 判断文件是否被更新，只读取近2小时的数据
+      var deviceFiles = await storage.listFiles(devicePath);
+
+      // 先找到所有消息文件的最大时间
+      DateTime? maxFileTime;
+      for (var file in deviceFiles) {
+        var filePath = file.path;
+        var isDir = file.isDir;
+        if (isDir == true || filePath == null) {
+          continue;
+        }
+
+        var filename = FileUtils.getFileName(filePath);
+        // 只处理消息文件：.msg.gz 或 .msg.gz.enc
+        if (!filename.contains('.msg-') || filename.endsWith('.sha256')) {
+          continue;
+        }
+
+        // 解析文件名中的时间信息
+        DateTime? fileTime = _parseTimeFromFilename(filename);
+        if (fileTime != null) {
+          if (maxFileTime == null || fileTime.isAfter(maxFileTime)) {
+            maxFileTime = fileTime;
+          }
+        }
+      }
+
+      // 计算最大时间近2小时的时间点
+      if (maxFileTime == null) {
+        return;
+      }
+      var twoHoursBeforeMaxTime = maxFileTime.subtract(Duration(hours: 2));
+      var futures = <Future>[];
+      // 只处理最大时间近2小时内的文件
+      for (var file in deviceFiles) {
+        var filePath = file.path;
+        var isDir = file.isDir;
+        if (isDir == true || filePath == null) {
+          continue;
+        }
+
+        futures.add(
+          _readDeviceMessageFile(
+            filePath,
+            twoHoursBeforeMaxTime,
+            maxFileTime,
+            storage,
+            receivers,
+            deviceId,
+          ),
+        );
+      }
+      await Future.wait(futures);
+      // 更新设备锁缓存
+      _deviceLockCache[deviceId] = remoteLock;
+    } catch (e) {
+      // 忽略单个设备处理失败，继续处理其他设备
+      print('处理设备消息失败: $deviceId, 错误: $e');
+    }
+  }
+
+  Future<void> _readDeviceMessageFile(
+    String filePath,
+    DateTime twoHoursBeforeMaxTime,
+    DateTime maxFileTime,
+    WenzbakStorageClientService storage,
+    Iterable<MessageReceiver> receivers,
+    String deviceId,
+  ) async {
+    var filename = FileUtils.getFileName(filePath);
+    // 只处理消息文件：.msg.gz 或 .msg.gz.enc
+    if (!filename.contains('.msg-') || filename.endsWith('.sha256')) {
+      return;
+    }
+
+    // 解析文件名中的时间信息，只处理最大时间近2小时的文件
+    DateTime? fileTime = _parseTimeFromFilename(filename);
+    if (fileTime == null) {
+      return;
+    }
+    if (fileTime.isBefore(twoHoursBeforeMaxTime) ||
+        fileTime.isAfter(maxFileTime)) {
+      return;
+    }
+
+    // 检查文件是否更新（通过 sha256）
+    var remoteSha256File = "$filePath.sha256";
+    var remoteSha256Bytes = await storage.readFile(remoteSha256File);
+    if (remoteSha256Bytes == null) {
+      return;
+    }
+    var remoteSha256 = utf8.decode(remoteSha256Bytes).trim();
+    var localSha256 = _fileSha256Cache[filePath];
+
+    if (localSha256 == remoteSha256) {
+      // 文件未更新，跳过
+      return;
+    }
+    // 4. 下载并解析消息文件
+    try {
+      await _downloadAndParseMessageFile(
+        filePath,
+        receivers,
+        deviceId,
+        remoteSha256,
+      );
+      // 更新 sha256 缓存
+      _fileSha256Cache[filePath] = remoteSha256;
+    } catch (e) {
+      // 忽略单个文件下载失败，继续处理其他文件
+      print('下载消息文件失败: $filePath, 错误: $e');
+    }
   }
 
   /// 下载并解析消息文件
-  Future<void> _downloadAndParseMessageFile(String remoteFilePath,
-      Iterable<MessageReceiver> receivers,
-      String deviceId,
-      String remoteSha256,) async {
+  Future<void> _downloadAndParseMessageFile(
+    String remoteFilePath,
+    Iterable<MessageReceiver> receivers,
+    String deviceId,
+    String remoteSha256,
+  ) async {
     var storage = WenzbakStorageClientService.getInstance(config);
     if (storage == null) {
       throw "未配置存储服务";
