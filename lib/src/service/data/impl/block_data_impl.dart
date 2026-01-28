@@ -509,33 +509,37 @@ class WenzbakBlockDataServiceImpl implements WenzbakBlockDataService {
     // 1.读取索引列表
     var remoteBlockIndexPath = config.getRemoteBlockIndexDir();
     var indexList = await storage.listFiles(remoteBlockIndexPath);
-    for (var indexFile in indexList) {
-      if (indexFile.isDir != true) {
-        var indexFilePath = indexFile.path;
-        if (indexFilePath == null) {
-          continue;
-        }
-        var bytes = await storage.readFile(indexFilePath);
-        if (bytes == null) {
-          continue;
-        }
-        var indexBytes = GZipUtil.decompressBytes(bytes);
-        var indexString = utf8.decode(indexBytes);
-        var indexMap = IndexUtil.readIndexMap(indexString);
-        // 2.根据索引下载数据
-        for (var index in indexMap.entries) {
-          // path
-          var key = index.key;
-          // sha256
-          var value = index.value;
-          try {
-            await downloadData(key, value, dataReceivers);
-          } catch (e) {
-            print(e);
+    await Future.wait(
+      indexList.map((indexFile) async {
+        if (indexFile.isDir != true) {
+          var indexFilePath = indexFile.path;
+          if (indexFilePath == null) {
+            return;
           }
+          var bytes = await storage.readFile(indexFilePath);
+          if (bytes == null) {
+            return;
+          }
+          var indexBytes = GZipUtil.decompressBytes(bytes);
+          var indexString = utf8.decode(indexBytes);
+          var indexMap = IndexUtil.readIndexMap(indexString);
+          // 2.根据索引下载数据
+          await Future.wait(
+            indexMap.entries.map((index) async {
+              // path
+              var key = index.key;
+              // sha256
+              var value = index.value;
+              try {
+                await downloadData(key, value, dataReceivers);
+              } catch (e) {
+                print(e);
+              }
+            }),
+          );
         }
-      }
-    }
+      }),
+    );
   }
 
   @override

@@ -46,6 +46,11 @@ class WenzbakClientServiceImpl extends WenzbakClientService {
   }
 
   @override
+  Future<void> readMessage() async {
+    await messageService.readMessage();
+  }
+
+  @override
   void startMessageTimer() {
     messageService.startTimer();
   }

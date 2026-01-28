@@ -50,6 +50,8 @@ abstract class WenzbakClientService {
   /// 发送消息
   Future<void> sendMessage(WenzbakMessage message);
 
+  Future<void> readMessage();
+
   /// 启动消息Timer
   void startMessageTimer();
 
