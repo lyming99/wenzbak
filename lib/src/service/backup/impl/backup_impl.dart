@@ -27,6 +27,10 @@ class WenzbakClientServiceImpl extends WenzbakClientService {
   }
 
   @override
+  bool get isSecretClient =>
+      config.secretKey != null && config.secretKey!.isNotEmpty;
+
+  @override
   void addMessageReceiver(MessageReceiver receiver) {
     messageService.addMessageReceiver(receiver);
   }
@@ -67,7 +71,7 @@ class WenzbakClientServiceImpl extends WenzbakClientService {
   }
 
   @override
-  String? getRemoteAssetsPath(String localPath)  {
+  String? getRemoteAssetsPath(String localPath) {
     return fileService.getAssetsPath(localPath);
   }
 
@@ -77,7 +81,7 @@ class WenzbakClientServiceImpl extends WenzbakClientService {
   }
 
   @override
-  String? getRemoteTempAssetsPath(String localPath)  {
+  String? getRemoteTempAssetsPath(String localPath) {
     return fileService.getTempAssetsPath(localPath);
   }
 

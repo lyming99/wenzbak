@@ -55,9 +55,10 @@ class WenzbakFileServiceImpl implements WenzbakFileService {
       await storage.downloadFile(remotePath, encryptFilePath);
       var sha256 = await Sha256Util.sha256File(encryptFilePath);
       if (sha256 != await File(sha256File).readAsString()) {
+        var length = await File(encryptFilePath).length();
         await File(encryptFilePath).delete();
         await File(sha256File).delete();
-        throw Exception("文件校验失败");
+        throw Exception("文件校验失败,本地文件长度： $length");
       }
       await WenzbakCryptUtil(
         config.secretKey ?? '',
@@ -68,9 +69,10 @@ class WenzbakFileServiceImpl implements WenzbakFileService {
       await storage.downloadFile(remotePath, savePath);
       var sha256 = await Sha256Util.sha256File(savePath);
       if (sha256 != await File(sha256File).readAsString()) {
+        var length = await File(savePath).length();
         await File(savePath).delete();
         await File(sha256File).delete();
-        throw Exception("文件校验失败");
+        throw Exception("文件校验失败,本地文件长度： $length");
       }
     }
   }

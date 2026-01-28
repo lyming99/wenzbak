@@ -228,7 +228,7 @@ class WenzbakConfig {
 
   String getLocalSecretAssetPath() {
     return [
-      remoteRootPath ?? 'wenzbak',
+      localRootPath ?? 'wenzbak',
       'private',
       secretKey,
       'assets',

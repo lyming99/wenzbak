@@ -34,22 +34,32 @@ class WenzbakMessageDownloadServiceImpl extends WenzbakMessageDownloadService {
     if (storage == null) {
       throw "未配置存储服务";
     }
-
+    var startTime = DateTime
+        .now()
+        .millisecondsSinceEpoch;
     // 1. 读取设备列表
     var deviceService = WenzbakDeviceService.getInstance(config);
     var deviceIds = await deviceService.queryDeviceIdList();
-
+    print("查询设备耗时：${DateTime
+        .now()
+        .millisecondsSinceEpoch - startTime} ms");
     // 2. 遍历每个设备，读取 msg.lock 并判断是否有新消息
     var remoteMsgRootPath = config.getRemoteMessageRootPath();
     for (var deviceId in deviceIds) {
       if (deviceId == config.deviceId) {
         continue;
       }
+      var time = DateTime
+          .now()
+          .millisecondsSinceEpoch;
       try {
         var devicePath = [remoteMsgRootPath, deviceId].join("/");
         var remoteMsgLockFile = [devicePath, "msg.lock"].join("/");
         var lockBytes = await storage.readFile(remoteMsgLockFile);
 
+        print("读取lock：${DateTime
+            .now()
+            .millisecondsSinceEpoch - time} ms");
         if (lockBytes == null || lockBytes.length < 16) {
           // 没有锁文件，跳过该设备
           continue;
@@ -84,6 +94,9 @@ class WenzbakMessageDownloadServiceImpl extends WenzbakMessageDownloadService {
         // 3. 读取设备消息文件：sha256 判断文件是否被更新，只读取近2小时的数据
         var deviceFiles = await storage.listFiles(devicePath);
 
+        print("查询消息文件：${DateTime
+            .now()
+            .millisecondsSinceEpoch - time} ms");
         // 先找到所有消息文件的最大时间
         DateTime? maxFileTime;
         for (var file in deviceFiles) {
@@ -138,40 +151,38 @@ class WenzbakMessageDownloadServiceImpl extends WenzbakMessageDownloadService {
             continue;
           }
 
-          for (var i = 0; i < 3; i++) {
-            // 检查文件是否更新（通过 sha256）
-            var remoteSha256File = "$filePath.sha256";
-            var remoteSha256Bytes = await storage.readFile(remoteSha256File);
-            if (remoteSha256Bytes == null) {
-              break;
-            }
-            var remoteSha256 = utf8.decode(remoteSha256Bytes).trim();
-            var localSha256 = _fileSha256Cache[filePath];
+          // 检查文件是否更新（通过 sha256）
+          var remoteSha256File = "$filePath.sha256";
+          var remoteSha256Bytes = await storage.readFile(remoteSha256File);
+          if (remoteSha256Bytes == null) {
+            continue;
+          }
+          var remoteSha256 = utf8.decode(remoteSha256Bytes).trim();
+          var localSha256 = _fileSha256Cache[filePath];
 
-            if (localSha256 == remoteSha256) {
-              // 文件未更新，跳过
-              break;
-            }
-            // 4. 下载并解析消息文件
-            try {
-              await _downloadAndParseMessageFile(
-                filePath,
-                receivers,
-                deviceId,
-                remoteSha256,
-              );
-              // 更新 sha256 缓存
-              _fileSha256Cache[filePath] = remoteSha256;
-              break;
-            } catch (e) {
-              // 忽略单个文件下载失败，继续处理其他文件
-              print('下载消息文件失败: $filePath, 错误: $e');
-              await Future.delayed(Duration(seconds: 1));
-              continue;
-            }
+          if (localSha256 == remoteSha256) {
+            // 文件未更新，跳过
+            continue;
+          }
+          // 4. 下载并解析消息文件
+          try {
+            await _downloadAndParseMessageFile(
+              filePath,
+              receivers,
+              deviceId,
+              remoteSha256,
+            );
+            // 更新 sha256 缓存
+            _fileSha256Cache[filePath] = remoteSha256;
+          } catch (e) {
+            // 忽略单个文件下载失败，继续处理其他文件
+            print('下载消息文件失败: $filePath, 错误: $e');
           }
         }
 
+        print("下载解析消息文件：${DateTime
+            .now()
+            .millisecondsSinceEpoch - time} ms");
         // 更新设备锁缓存
         _deviceLockCache[deviceId] = remoteLock;
       } catch (e) {
@@ -187,6 +198,9 @@ class WenzbakMessageDownloadServiceImpl extends WenzbakMessageDownloadService {
     await _saveProcessedMessageUuids();
     await _saveFileSha256Cache();
     await _saveDeviceLockCache();
+    print("读取消息总耗时：${DateTime
+        .now()
+        .millisecondsSinceEpoch - startTime} ms");
   }
 
   /// 下载并解析消息文件

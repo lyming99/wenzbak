@@ -3,6 +3,8 @@ import 'package:wenzbak/src/service/data/block_data.dart';
 import 'package:wenzbak/src/service/message/message.dart';
 
 abstract class WenzbakClientService {
+  bool get isSecretClient;
+
   /// 添加备份数据到系统
   /// 系统会自动将数据上传，失败会重新上传
   Future<void> addBackupData(WenzbakDataLine line);
