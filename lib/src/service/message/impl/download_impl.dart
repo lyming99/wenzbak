@@ -142,7 +142,6 @@ class WenzbakMessageDownloadServiceImpl extends WenzbakMessageDownloadService {
         if (isDir == true || filePath == null) {
           continue;
         }
-
         futures.add(
           _readDeviceMessageFile(
             filePath,

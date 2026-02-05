@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:wenzbak/src/config/backup.dart';
 import 'package:wenzbak/src/service/storage/impl/file_storage_client.dart';
+import 'package:wenzbak/src/service/storage/impl/minio_storage_client.dart';
 import 'package:wenzbak/src/service/storage/impl/s3_storage_client.dart';
 import 'package:wenzbak/src/service/storage/impl/webdav_storage_client.dart';
 
@@ -90,6 +91,17 @@ abstract class WenzbakStorageClientService {
             throw Exception('S3 storage requires "endpoint", "accessKey", "secretKey", and "bucket" in storageConfig');
           }
           return S3StorageClient(config, endpoint, accessKey, secretKey, bucket, region);
+
+        case 'minio':
+          var endpoint = configMap['endpoint'] as String?;
+          var accessKey = configMap['accessKey'] as String?;
+          var secretKey = configMap['secretKey'] as String?;
+          var bucket = configMap['bucket'] as String?;
+          var region = configMap['region'] as String?;
+          if (endpoint == null || accessKey == null || secretKey == null || bucket == null) {
+            throw Exception('MinIO storage requires "endpoint", "accessKey", "secretKey", and "bucket" in storageConfig');
+          }
+          return MinioStorageClient(config, endpoint, accessKey, secretKey, bucket, region);
 
         default:
           throw Exception('Unsupported storage type: $storageType');

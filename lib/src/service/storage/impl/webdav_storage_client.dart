@@ -374,6 +374,8 @@ class WebDAVStorageClient extends WenzbakStorageClientService {
       return null;
     }
     if (response.statusCode != 200) {
+      var bytes = await response.stream.toBytes();
+      print(utf8.decode(bytes));
       throw Exception('读取文件失败: ${response.statusCode}');
     }
 

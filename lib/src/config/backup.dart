@@ -14,13 +14,14 @@ class WenzbakConfig {
   /// 如果为 null，则使用 storageType + storageConfig 创建
   final WenzbakStorageClientService? storage;
 
-  /// 存储类型: 'file', 'webdav', 's3'
+  /// 存储类型: 'file', 'webdav', 's3', 'minio'
   final String? storageType;
 
   /// 存储配置信息 (JSON 字符串)
   /// 对于 file: {"basePath": "/path/to/storage"}
   /// 对于 webdav: {"url": "https://example.com/webdav", "username": "user", "password": "pass"}
-  /// 对于 s3: {"endpoint": "https://s3.amazonaws.com", "accessKey": "key", "secretKey": "secret", "bucket": "bucket-name", "region": "us-east-1"}
+  /// 对于 s3 (AWS S3/阿里云 OSS): {"endpoint": "https://s3.amazonaws.com", "accessKey": "key", "secretKey": "secret", "bucket": "bucket-name", "region": "us-east-1"}
+  /// 对于 minio: {"endpoint": "https://minio.example.com", "accessKey": "key", "secretKey": "secret", "bucket": "bucket-name", "region": "us-east-1"}
   final String? storageConfig;
 
   WenzbakConfig({
