@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:synchronized/synchronized.dart';
 import 'package:wenzbak/src/config/backup.dart';
@@ -39,7 +40,8 @@ class WenzbakMessageServiceImpl extends WenzbakMessageService {
   @override
   void startTimer() {
     stopTimer();
-    _messageTimer = Timer.periodic(Duration(seconds: 5), (timer) {
+    var interval = max(5, config.messageInterval);
+    _messageTimer = Timer.periodic(Duration(seconds: interval), (timer) {
       readMessage();
     });
     readMessage();

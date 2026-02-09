@@ -61,6 +61,12 @@ class WenzbakClientServiceImpl extends WenzbakClientService {
   }
 
   @override
+  void setMessageTimerInterval(int interval) {
+    config = config.copyWith(messageInterval: interval);
+    messageService.startTimer();
+  }
+
+  @override
   Future<void> addBackupData(WenzbakDataLine line) async {
     await dataService.addBackupData(line);
   }

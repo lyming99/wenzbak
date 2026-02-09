@@ -58,6 +58,8 @@ abstract class WenzbakClientService {
   /// 停止消息Timer
   void stopMessageTimer();
 
+  void setMessageTimerInterval(int interval);
+
   Future uploadAllData(bool oneHoursAgo);
 
   Future<void> mergeHistoryData();

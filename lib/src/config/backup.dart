@@ -9,6 +9,7 @@ class WenzbakConfig {
   final String? secretKey;
   final String? secret;
   final bool encryptFile;
+  final int messageInterval;
 
   /// 直接注入的 Storage 实例（优先使用）
   /// 如果为 null，则使用 storageType + storageConfig 创建
@@ -31,10 +32,36 @@ class WenzbakConfig {
     this.secretKey,
     this.secret,
     this.encryptFile = false,
+    this.messageInterval = 5,
     this.storage,
     this.storageType,
     this.storageConfig,
   });
+
+  // copyWith
+  WenzbakConfig copyWith({
+    String? deviceId,
+    String? localRootPath,
+    String? remoteRootPath,
+    String? secretKey,
+    String? secret,
+    bool? encryptFile,
+    int? messageInterval,
+    WenzbakStorageClientService? storage,
+    String? storageType,
+    String? storageConfig,
+  }) {
+    return WenzbakConfig(
+      deviceId: deviceId ?? this.deviceId,
+      localRootPath: localRootPath ?? this.localRootPath,
+      remoteRootPath: remoteRootPath ?? this.remoteRootPath,
+      secretKey: secretKey ?? this.secretKey,
+      secret: secret ?? this.secret,
+      encryptFile: encryptFile ?? this.encryptFile,
+      messageInterval: messageInterval ?? this.messageInterval,
+      storage: storage ?? this.storage,
+    );
+  }
 
   /// 获取当前小时备份目录
   String? getLocalCurrentPublicBlockHourBakPath() {
