@@ -30,15 +30,17 @@ class WenzbakMessageDownloadServiceImpl extends WenzbakMessageDownloadService {
 
   @override
   Future<void> readMessage(Iterable<MessageReceiver> receivers) async {
+    config.logger.info('开始读取消息', tag: 'DownloadService');
     var storage = WenzbakStorageClientService.getInstance(config);
     if (storage == null) {
+      config.logger.error('未配置存储服务', tag: 'DownloadService');
       throw "未配置存储服务";
     }
     var startTime = DateTime.now().millisecondsSinceEpoch;
     // 1. 读取设备列表
     var deviceService = WenzbakDeviceService.getInstance(config);
     var deviceIds = await deviceService.queryDeviceIdList();
-    print("查询设备耗时：${DateTime.now().millisecondsSinceEpoch - startTime} ms");
+    // print("查询设备耗时：${DateTime.now().millisecondsSinceEpoch - startTime} ms");
     // 2. 遍历每个设备，读取 msg.lock 并判断是否有新消息
     var remoteMsgRootPath = config.getRemoteMessageRootPath();
     var futures = <Future>[];
@@ -58,7 +60,10 @@ class WenzbakMessageDownloadServiceImpl extends WenzbakMessageDownloadService {
     await _saveProcessedMessageUuids();
     await _saveFileSha256Cache();
     await _saveDeviceLockCache();
-    print("读取消息总耗时：${DateTime.now().millisecondsSinceEpoch - startTime} ms");
+    config.logger.info(
+      '读取消息完成，耗时: ${DateTime.now().millisecondsSinceEpoch - startTime} ms',
+      tag: 'DownloadService',
+    );
   }
 
   Future<void> _readDeviceMessage(
@@ -156,9 +161,15 @@ class WenzbakMessageDownloadServiceImpl extends WenzbakMessageDownloadService {
       await Future.wait(futures);
       // 更新设备锁缓存
       _deviceLockCache[deviceId] = remoteLock;
-    } catch (e) {
+      config.logger.debug('处理设备消息完成: $deviceId', tag: 'DownloadService');
+    } catch (e, stack) {
       // 忽略单个设备处理失败，继续处理其他设备
-      print('处理设备消息失败: $deviceId, 错误: $e');
+      if (!e.toString().contains("404")) {
+        config.logger.warn(
+          '处理设备消息失败: $deviceId, 错误: $e',
+          tag: 'DownloadService',
+        );
+      }
     }
   }
 
@@ -209,9 +220,12 @@ class WenzbakMessageDownloadServiceImpl extends WenzbakMessageDownloadService {
       );
       // 更新 sha256 缓存
       _fileSha256Cache[filePath] = remoteSha256;
-    } catch (e) {
+    } catch (e, stack) {
       // 忽略单个文件下载失败，继续处理其他文件
-      print('下载消息文件失败: $filePath, 错误: $e');
+      config.logger.warn(
+        '下载消息文件失败: $filePath, 错误: $e',
+        tag: 'DownloadService',
+      );
     }
   }
 
@@ -222,8 +236,10 @@ class WenzbakMessageDownloadServiceImpl extends WenzbakMessageDownloadService {
     String deviceId,
     String remoteSha256,
   ) async {
+    config.logger.debug('下载消息文件: $remoteFilePath', tag: 'DownloadService');
     var storage = WenzbakStorageClientService.getInstance(config);
     if (storage == null) {
+      config.logger.error('未配置存储服务', tag: 'DownloadService');
       throw "未配置存储服务";
     }
 
@@ -316,7 +332,7 @@ class WenzbakMessageDownloadServiceImpl extends WenzbakMessageDownloadService {
         }
       } catch (e) {
         // 忽略单条消息解析失败，继续处理其他消息
-        print('解析消息失败: $line, 错误: $e');
+        config.logger.debug('解析消息失败: $e', tag: 'DownloadService');
       }
     }
     // 4. 清理消息文件

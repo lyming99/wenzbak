@@ -1,3 +1,4 @@
+import 'package:wenzbak/src/logger/logger.dart';
 import 'package:wenzbak/src/service/storage/storage.dart';
 import 'package:wenzbak/src/utils/file_utils.dart';
 
@@ -25,6 +26,9 @@ class WenzbakConfig {
   /// 对于 minio: {"endpoint": "https://minio.example.com", "accessKey": "key", "secretKey": "secret", "bucket": "bucket-name", "region": "us-east-1"}
   final String? storageConfig;
 
+  /// 日志接口（默认不记录日志）
+  final Logger logger;
+
   WenzbakConfig({
     required this.deviceId,
     required this.localRootPath,
@@ -36,6 +40,7 @@ class WenzbakConfig {
     this.storage,
     this.storageType,
     this.storageConfig,
+    this.logger =   const NoOpLogger(),
   });
 
   // copyWith
@@ -50,6 +55,7 @@ class WenzbakConfig {
     WenzbakStorageClientService? storage,
     String? storageType,
     String? storageConfig,
+    Logger? logger,
   }) {
     return WenzbakConfig(
       deviceId: deviceId ?? this.deviceId,
@@ -60,6 +66,9 @@ class WenzbakConfig {
       encryptFile: encryptFile ?? this.encryptFile,
       messageInterval: messageInterval ?? this.messageInterval,
       storage: storage ?? this.storage,
+      storageType: storageType ?? this.storageType,
+      storageConfig: storageConfig ?? this.storageConfig,
+      logger: logger ?? this.logger,
     );
   }
 

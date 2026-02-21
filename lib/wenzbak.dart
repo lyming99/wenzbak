@@ -3,6 +3,7 @@
 /// More dartdocs go here.
 library;
 
+export 'src/logger/logger.dart';
 export 'src/service/storage/storage.dart';
 export 'src/service/backup/backup.dart';
 export 'src/utils/crypt_util.dart';
