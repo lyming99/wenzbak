@@ -4,7 +4,6 @@ import 'dart:typed_data';
 import 'package:wenzbak/src/config/backup.dart';
 import 'package:wenzbak/src/service/storage/impl/file_storage_client.dart';
 import 'package:wenzbak/src/service/storage/impl/minio_storage_client.dart';
-import 'package:wenzbak/src/service/storage/impl/s3_storage_client.dart';
 import 'package:wenzbak/src/service/storage/impl/webdav_storage_client.dart';
 
 import '../../models/index.dart';
@@ -90,7 +89,7 @@ abstract class WenzbakStorageClientService {
           if (endpoint == null || accessKey == null || secretKey == null || bucket == null) {
             throw Exception('S3 storage requires "endpoint", "accessKey", "secretKey", and "bucket" in storageConfig');
           }
-          return S3StorageClient(config, endpoint, accessKey, secretKey, bucket, region);
+          return MinioStorageClient(config, endpoint, accessKey, secretKey, bucket, region);
 
         case 'minio':
           var endpoint = configMap['endpoint'] as String?;

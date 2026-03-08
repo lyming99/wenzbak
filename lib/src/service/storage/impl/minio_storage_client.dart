@@ -28,6 +28,7 @@ class MinioStorageClient extends WenzbakStorageClientService {
           endpoint,
           accessKey,
           secretKey,
+          bucket,
           region,
         ) {
     clientId = _uuid.v4();

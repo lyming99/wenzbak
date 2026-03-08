@@ -8,7 +8,10 @@
       "Bash(dart pub:*)",
       "Bash(dir \"C:\\\\Users\\\\98000\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.flutter-io.cn\\\\minio-3.5.8\\\\lib\")",
       "Bash(dart analyze:*)",
-      "Bash(dart run test:*)"
+      "Bash(dart run test:*)",
+      "Bash(flutter pub:*)",
+      "Bash(dir:*)",
+      "Bash(pub:*)"
     ]
   }
 }

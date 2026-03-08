@@ -16,7 +16,6 @@ void main() async {
     'bucket': 'wenzbak',
     'region': 'us-east-1',
   };
-
   // 创建配置
   var config = WenzbakConfig(
     deviceId: 'test-device-001',
@@ -115,7 +114,7 @@ void main() async {
   // 测试 5: 列出文件
   print('--- 测试 5: 列出文件 ---');
   try {
-    var files = await storage.listFiles('test-folder');
+    var files = await storage.listFiles('test-folder/');
     print('✅ 文件列表获取成功');
     print('   文件数量: ${files.length}');
     for (var file in files) {

@@ -12,8 +12,25 @@ class StorageClientUtil {
     String endpoint,
     String accessKey,
     String secretKey,
+    String bucket,
     String? region,
   ) {
+    // 默认minio模式，路径在尾部，而有些平台，则是在开头，需要做出识别
+    var pathStyle = true;
+    // s3模式:处理掉域名，交给Minio处理
+    if (endpoint.startsWith("http://$bucket.")) {
+      pathStyle = false;
+      endpoint = endpoint.substring("http://$bucket.".length);
+    } else if (endpoint.startsWith("https://$bucket.")) {
+      pathStyle = false;
+      endpoint = endpoint.substring("https://$bucket.".length);
+    } else if (endpoint.startsWith("$bucket.")) {
+      pathStyle = false;
+      endpoint = endpoint.substring("$bucket.".length);
+    } else {
+      // minio模式: 用户没有配置尾巴，则加上尾巴
+      pathStyle = true;
+    }
     // 解析协议和端口
     var useSSL = true; // 默认使用 HTTPS
     var port = 0; // 0 表示自动推断
@@ -48,15 +65,7 @@ class StorageClientUtil {
       region: region,
       useSSL: useSSL,
       port: port > 0 ? port : null,
+      pathStyle: pathStyle,
     );
-  }
-
-  /// todo 实现数据上传
-  static Future createUploadBlockTask({
-    required String config,
-    String? serverId,
-    required String blockFile,
-  }) async {
-    // TODO: 实现数据上传
   }
 }
