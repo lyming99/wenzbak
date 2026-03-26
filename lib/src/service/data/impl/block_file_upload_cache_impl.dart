@@ -35,40 +35,38 @@ class WenzbakBlockFileUploadCacheImpl implements WenzbakBlockFileUploadCache {
 
   @override
   Future<String?> getCurrentCacheFile(DateTime? dateTime) async {
-    try {
-      var now = dateTime ?? DateTime.now();
-      // 生成当前小时的文件路径标识
-      // 格式：yyyy-MM-dd-HH
-      var dateStr = FileUtils.getTimeFilePath(now);
-      var cacheKey = dateStr;
+    var now = dateTime ?? DateTime.now();
+    // 生成当前小时的文件路径标识
+    // 格式：yyyy-MM-dd-HH
+    var dateStr = FileUtils.getTimeFilePath(now);
+    var cacheKey = dateStr;
+    // 如果缓存中已存在当前小时的文件，返回已有路径
+    if (_cache.containsKey(cacheKey)) {
+      return _cache[cacheKey];
+    }
+    var needWrite = false;
+    var ret = await _lock.synchronized(() async {
       // 如果缓存中已存在当前小时的文件，返回已有路径
       if (_cache.containsKey(cacheKey)) {
         return _cache[cacheKey];
       }
-      var needWrite = false;
-      var ret = await _lock.synchronized(() async {
-        // 如果缓存中已存在当前小时的文件，返回已有路径
-        if (_cache.containsKey(cacheKey)) {
-          return _cache[cacheKey];
-        }
-        var blockDir = config.getLocalPublicBlockDir();
-        // 确保目录存在
-        var dir = Directory(blockDir);
-        if (!await dir.exists()) {
-          await dir.create(recursive: true);
-        }
-
-        needWrite = true;
-        var fileName = Uuid().v4();
-        _cache[cacheKey] = [blockDir, "$cacheKey-$fileName.txt"].join('/');
-        return _cache[cacheKey];
-      });
-      if (needWrite) {
-        // 保存缓存
-        await writeCache();
+      var blockDir = config.getLocalPublicBlockDir();
+      // 确保目录存在
+      var dir = Directory(blockDir);
+      if (!await dir.exists()) {
+        await dir.create(recursive: true);
       }
-      return ret;
-    } finally {}
+
+      needWrite = true;
+      var fileName = Uuid().v4();
+      _cache[cacheKey] = [blockDir, "$cacheKey-$fileName.txt"].join('/');
+      return _cache[cacheKey];
+    });
+    if (needWrite) {
+      // 保存缓存
+      await writeCache();
+    }
+    return ret;
   }
 
   @override
@@ -167,7 +165,7 @@ class WenzbakBlockFileUploadCacheImpl implements WenzbakBlockFileUploadCache {
           _cache.remove(key);
         }
       } catch (e) {
-        print('读取block文件缓存失败: $e');
+        config.logger.error('读取block文件缓存失败: $e');
         // 读取失败时清空缓存
         _cache.clear();
       }
@@ -185,7 +183,7 @@ class WenzbakBlockFileUploadCacheImpl implements WenzbakBlockFileUploadCache {
         await FileUtils.createParentDir(_cacheFilePath);
         await File(_cacheFilePath).writeAsString(jsonEncode(_cache));
       } catch (e) {
-        print('写入block文件缓存失败: $e');
+        config.logger.error('写入block文件缓存失败: $e');
       }
     });
   }

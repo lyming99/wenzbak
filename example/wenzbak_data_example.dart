@@ -92,4 +92,8 @@ class _WenzbakDataReceiver extends WenzbakDataReceiver {
       print("接收到数据：${line.content}");
     }
   }
+
+  @override
+  Future<dynamic> onReceiveEnd() async{
+  }
 }

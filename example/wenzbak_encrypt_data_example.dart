@@ -127,4 +127,8 @@ class _WenzbakDataReceiver extends WenzbakDataReceiver {
       print("收到解密数据：${line.content}");
     }
   }
+
+  @override
+  Future<dynamic> onReceiveEnd() async{
+  }
 }

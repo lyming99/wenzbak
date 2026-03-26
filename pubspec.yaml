@@ -17,6 +17,7 @@ dependencies:
   http: ^1.1.0
   xml: ^6.3.0
   minio: ^3.5.8
+  dio: ^5.9.2
 
 dev_dependencies:
   lints: ^5.0.0

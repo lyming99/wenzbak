@@ -256,7 +256,7 @@ class WenzbakMessageUploadServiceImpl extends WenzbakMessageUploadService {
         await storage.deleteFile(filePath);
       } catch (e) {
         // 忽略删除失败的文件，继续删除其他文件
-        print('删除文件失败: $filePath, 错误: $e');
+        config.logger.error('删除文件失败: $filePath, 错误: $e');
       }
     }
   }
@@ -337,7 +337,7 @@ class WenzbakMessageUploadServiceImpl extends WenzbakMessageUploadService {
       await storage.uploadFile(remoteFilePath, localPath);
       return remoteFilePath;
     } catch (e) {
-      print('上传文件失败: $localPath, 错误: $e');
+      config.logger.error('上传文件失败: $localPath, 错误: $e');
       return null;
     }
   }
@@ -393,7 +393,7 @@ class WenzbakMessageUploadServiceImpl extends WenzbakMessageUploadService {
         await storage.deleteFile(filePath);
       } catch (e) {
         // 忽略删除失败的文件，继续删除其他文件
-        print('删除文件失败: $filePath, 错误: $e');
+        config.logger.error('删除文件失败: $filePath, 错误: $e');
       }
     }
   }

@@ -29,10 +29,10 @@ class WenzbakBlockDataServiceImpl implements WenzbakBlockDataService {
   final WenzbakConfig config;
 
   /// 操作锁
-  final Lock _fileLock = Lock();
+  final Lock _fileWriteLock = Lock();
 
   late final WenzbakBlockFileUploadCache _blockFileUploadCache =
-      WenzbakBlockFileUploadCacheImpl(config);
+  WenzbakBlockFileUploadCacheImpl(config);
 
   /// 构造函数
   /// [config] 配置对象，包含数据库路径等信息
@@ -53,8 +53,7 @@ class WenzbakBlockDataServiceImpl implements WenzbakBlockDataService {
     if (txtPath == null) {
       return Future.error("未指定缓存文件");
     }
-    print(txtPath);
-    await _fileLock.synchronized(() async {
+    await _fileWriteLock.synchronized(() async {
       await FileUtils.appendLine(txtPath, data);
     });
   }
@@ -81,7 +80,7 @@ class WenzbakBlockDataServiceImpl implements WenzbakBlockDataService {
     for (var entry in lineMap.entries) {
       var txtPath = entry.key;
       var values = entry.value;
-      await _fileLock.synchronized(() async {
+      await _fileWriteLock.synchronized(() async {
         await FileUtils.appendLine(txtPath, values.join("\n"));
       });
     }
@@ -100,34 +99,27 @@ class WenzbakBlockDataServiceImpl implements WenzbakBlockDataService {
     if (uploadFiles.isEmpty) {
       return;
     }
-
     var storage = WenzbakStorageClientService.getInstance(config);
     if (storage == null) {
       throw "storage is null";
     }
-
     // 获取索引服务
     var indexesService = WenzbakBlockIndexesService.getInstance(config);
-
-    // 处理每个需要上传的文件
     for (var localFilePath in uploadFiles) {
       try {
         await _uploadSingleBlockFile(localFilePath, storage, indexesService);
-        // 上传成功后，从缓存中移除文件
         await _blockFileUploadCache.removeFile(localFilePath);
       } catch (e) {
-        print('上传block文件失败: $localFilePath, 错误: $e');
-        // 继续处理下一个文件，不中断整个上传流程
+        config.logger.error('上传block文件失败: $localFilePath, 错误: $e');
+        rethrow;
       }
     }
   }
 
   /// 上传单个block文件
-  Future<void> _uploadSingleBlockFile(
-    String localFilePath,
-    WenzbakStorageClientService storage,
-    WenzbakBlockIndexesService indexesService,
-  ) async {
+  Future<void> _uploadSingleBlockFile(String localFilePath,
+      WenzbakStorageClientService storage,
+      WenzbakBlockIndexesService indexesService,) async {
     // 检查本地文件是否存在
     var localFile = File(localFilePath);
     if (!await localFile.exists()) {
@@ -310,11 +302,9 @@ class WenzbakBlockDataServiceImpl implements WenzbakBlockDataService {
     return [saveDir, "$uuid.gz"].join("/");
   }
 
-  Future<void> downloadBlockFile(
-    DateTime? dateTime,
-    WenzbakStorageBlockFile? blockFile,
-    Set<WenzbakDataReceiver> dataReceivers,
-  ) async {
+  Future<void> downloadBlockFile(DateTime? dateTime,
+      WenzbakStorageBlockFile? blockFile,
+      Set<WenzbakDataReceiver> dataReceivers,) async {
     if (blockFile == null) {
       return;
     }
@@ -384,12 +374,11 @@ class WenzbakBlockDataServiceImpl implements WenzbakBlockDataService {
 
   /// 下载数据块文件：本客户端的数据无需下载，其它客户端的数据通过sha256进行校验下载
   @override
-  Future<void> downloadData(
-    String remotePath,
-    String? sha256,
-    Set<WenzbakDataReceiver> dataReceivers, {
-    bool reload = false,
-  }) async {
+  Future<void> downloadData(String remotePath,
+      String? sha256,
+      Set<WenzbakDataReceiver> dataReceivers, {
+        bool reload = false,
+      }) async {
     var localSha256 = await readLocalSha256(remotePath);
     if (!reload && sha256 != null && localSha256 == sha256) {
       // 对应的文件sha256已经下载，无需再次下载
@@ -448,7 +437,7 @@ class WenzbakBlockDataServiceImpl implements WenzbakBlockDataService {
         txtFile,
         onLine: (line) async {
           lineCache.add(WenzbakDataLine(content: line));
-          if (lineCache.length >= 1000) {
+          if (lineCache.length >= 500) {
             for (var receiver in dataReceivers) {
               await receiver.onReceive(lineCache);
             }
@@ -461,6 +450,9 @@ class WenzbakBlockDataServiceImpl implements WenzbakBlockDataService {
           await receiver.onReceive(lineCache);
         }
         lineCache.clear();
+      }
+      for (var receiver in dataReceivers) {
+        await receiver.onReceiveEnd();
       }
       // 7.保存sha256到本地
       await writeLocalSha256(remotePath, remoteSha256);
@@ -509,48 +501,7 @@ class WenzbakBlockDataServiceImpl implements WenzbakBlockDataService {
     // 1.读取索引列表
     var remoteBlockIndexPath = config.getRemoteBlockIndexDir();
     var indexList = await storage.listFiles(remoteBlockIndexPath);
-    await Future.wait(
-      indexList.map((indexFile) async {
-        if (indexFile.isDir != true) {
-          var indexFilePath = indexFile.path;
-          if (indexFilePath == null) {
-            return;
-          }
-          var bytes = await storage.readFile(indexFilePath);
-          if (bytes == null) {
-            return;
-          }
-          var indexBytes = GZipUtil.decompressBytes(bytes);
-          var indexString = utf8.decode(indexBytes);
-          var indexMap = IndexUtil.readIndexMap(indexString);
-          // 2.根据索引下载数据
-          await Future.wait(
-            indexMap.entries.map((index) async {
-              // path
-              var key = index.key;
-              // sha256
-              var value = index.value;
-              try {
-                await downloadData(key, value, dataReceivers);
-              } catch (e) {
-                print(e);
-              }
-            }),
-          );
-        }
-      }),
-    );
-  }
-
-  @override
-  Future<void> reloadAllData(Set<WenzbakDataReceiver> dataReceivers) async {
-    var storage = WenzbakStorageClientService.getInstance(config);
-    if (storage == null) {
-      throw "storage is null";
-    }
-    // 1.读取索引列表
-    var remoteBlockIndexPath = config.getRemoteBlockIndexDir();
-    var indexList = await storage.listFiles(remoteBlockIndexPath);
+    print("待下载文件列表:${indexList.length}");
     for (var indexFile in indexList) {
       if (indexFile.isDir != true) {
         var indexFilePath = indexFile.path;
@@ -571,9 +522,52 @@ class WenzbakBlockDataServiceImpl implements WenzbakBlockDataService {
           // sha256
           var value = index.value;
           try {
+            await downloadData(key, value, dataReceivers);
+          } catch (e) {
+            config.logger.error('下载数据失败(reload all data)：$e');
+          }
+        }
+      }
+    }
+  }
+
+  @override
+  Future<void> reloadAllData(Set<WenzbakDataReceiver> dataReceivers) async {
+    var storage = WenzbakStorageClientService.getInstance(config);
+    if (storage == null) {
+      throw "storage is null";
+    }
+    // 1.读取索引列表
+    var remoteBlockIndexPath = config.getRemoteBlockIndexDir();
+    var indexList = await storage.listFiles(remoteBlockIndexPath);
+    print("待下载设备列表:${indexList.length}");
+    var deviceIndex = 0;
+    for (var indexFile in indexList) {
+      print("下载设备数据:${++deviceIndex}");
+      if (indexFile.isDir != true) {
+        var indexFilePath = indexFile.path;
+        if (indexFilePath == null) {
+          continue;
+        }
+        var bytes = await storage.readFile(indexFilePath);
+        if (bytes == null) {
+          continue;
+        }
+        var indexBytes = GZipUtil.decompressBytes(bytes);
+        var indexString = utf8.decode(indexBytes);
+        var indexMap = IndexUtil.readIndexMap(indexString);
+        print("待下载文件列表:${indexMap.length}");
+        // 2.根据索引下载数据
+        for (var index in indexMap.entries) {
+          // path
+          var key = index.key;
+          // sha256
+          var value = index.value;
+          print("下载设备文件:${key}");
+          try {
             await downloadData(key, value, dataReceivers, reload: true);
           } catch (e) {
-            print(e);
+            config.logger.error('下载数据失败(reload all data)：$e');
           }
         }
       }
@@ -815,12 +809,10 @@ class WenzbakBlockDataServiceImpl implements WenzbakBlockDataService {
   }
 
   /// 合并一天的文件
-  Future<void> _mergeDayFiles(
-    String dateKey, // YYYY-MM-DD
-    List<MapEntry<String, String>> files,
-    WenzbakStorageClientService storage,
-    WenzbakBlockIndexesService indexesService,
-  ) async {
+  Future<void> _mergeDayFiles(String dateKey, // YYYY-MM-DD
+      List<MapEntry<String, String>> files,
+      WenzbakStorageClientService storage,
+      WenzbakBlockIndexesService indexesService,) async {
     bool isEncrypted = config.secretKey != null && config.secret != null;
     String? mergedTextPath;
     String? mergedGzipPath;
@@ -945,11 +937,11 @@ class WenzbakBlockDataServiceImpl implements WenzbakBlockDataService {
           await storage.deleteFile(filepath);
           await storage.deleteFile("$filepath.sha256");
         } catch (e) {
-          print('删除文件失败: $filepath, 错误: $e');
+          config.logger.error('删除文件失败: $filepath, 错误: $e');
         }
       }
     } catch (e) {
-      print('按天合并文件失败: $dateKey, 错误: $e');
+      config.logger.error('按天合并文件失败: $dateKey, 错误: $e');
     } finally {
       // 清理所有临时文件
       if (mergedTextPath != null && await File(mergedTextPath).exists()) {
@@ -987,12 +979,10 @@ class WenzbakBlockDataServiceImpl implements WenzbakBlockDataService {
   }
 
   /// 合并一年的文件
-  Future<void> _mergeYearFiles(
-    int year,
-    List<MapEntry<String, String>> files,
-    WenzbakStorageClientService storage,
-    WenzbakBlockIndexesService indexesService,
-  ) async {
+  Future<void> _mergeYearFiles(int year,
+      List<MapEntry<String, String>> files,
+      WenzbakStorageClientService storage,
+      WenzbakBlockIndexesService indexesService,) async {
     bool isEncrypted = config.secretKey != null && config.secret != null;
     String? mergedTextPath;
     String? mergedGzipPath;
@@ -1117,11 +1107,11 @@ class WenzbakBlockDataServiceImpl implements WenzbakBlockDataService {
           await storage.deleteFile(filepath);
           await storage.deleteFile("$filepath.sha256");
         } catch (e) {
-          print('删除文件失败: $filepath, 错误: $e');
+          config.logger.error('删除文件失败: $filepath, 错误: $e');
         }
       }
     } catch (e) {
-      print('按年合并文件失败: $year, 错误: $e');
+      config.logger.error('按年合并文件失败: $year, 错误: $e');
     } finally {
       // 清理所有临时文件
       if (mergedTextPath != null && await File(mergedTextPath).exists()) {
@@ -1159,10 +1149,8 @@ class WenzbakBlockDataServiceImpl implements WenzbakBlockDataService {
   }
 
   /// 下载文件用于合并
-  Future<String?> _downloadFileForMerge(
-    String remotePath,
-    WenzbakStorageClientService storage,
-  ) async {
+  Future<String?> _downloadFileForMerge(String remotePath,
+      WenzbakStorageClientService storage,) async {
     try {
       var filename = FileUtils.encodePath(remotePath);
       var saveDir = config.getLocalBlockSaveDir();
@@ -1177,7 +1165,7 @@ class WenzbakBlockDataServiceImpl implements WenzbakBlockDataService {
       await storage.downloadFile(remotePath, localPath);
       return localPath;
     } catch (e) {
-      print('下载文件失败: $remotePath, 错误: $e');
+      config.logger.error('下载文件失败: $remotePath, 错误: $e');
       return null;
     }
   }

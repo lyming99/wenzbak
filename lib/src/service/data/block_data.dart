@@ -6,6 +6,9 @@ abstract class WenzbakDataReceiver {
   /// 接收一行数据
   /// [lines] 解析出来的数据行
   Future onReceive(List<WenzbakDataLine> lines);
+
+  /// 数据接收结束
+  Future onReceiveEnd();
 }
 
 /// 记录与查询数据块，通过本地数据库实现

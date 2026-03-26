@@ -69,7 +69,7 @@ class WenzbakDeviceServiceImpl extends WenzbakDeviceService {
 
       return true;
     } catch (e) {
-      print('上传设备信息失败: $e');
+      config.logger.error('上传设备信息失败: $e');
       return false;
     }
   }
@@ -123,7 +123,7 @@ class WenzbakDeviceServiceImpl extends WenzbakDeviceService {
             _deviceInfoCache[id] = deviceInfo;
           }
         } catch (e) {
-          print('查询设备信息失败: $id, 错误: $e');
+          config.logger.error('查询设备信息失败: $id, 错误: $e');
         }
       }
 
@@ -132,7 +132,7 @@ class WenzbakDeviceServiceImpl extends WenzbakDeviceService {
 
       return deviceInfoList;
     } catch (e) {
-      print('查询设备信息失败: $e');
+      config.logger.error('查询设备信息失败: $e');
       return [];
     }
   }
@@ -183,7 +183,7 @@ class WenzbakDeviceServiceImpl extends WenzbakDeviceService {
       // 这里先使用 platform 作为 model
       model = platform;
     } catch (e) {
-      print('获取设备信息失败: $e');
+      config.logger.error('获取设备信息失败: $e');
       platform = 'unknown';
       osVersion = 'unknown';
       model = 'unknown';
@@ -215,7 +215,7 @@ class WenzbakDeviceServiceImpl extends WenzbakDeviceService {
           );
         }
       } catch (e) {
-        print('加载设备信息缓存失败: $e');
+        config.logger.error('加载设备信息缓存失败: $e');
       }
     }
   }
@@ -231,7 +231,7 @@ class WenzbakDeviceServiceImpl extends WenzbakDeviceService {
       }
       await File(localDeviceInfoCacheFile).writeAsString(jsonEncode(map));
     } catch (e) {
-      print('保存设备信息缓存失败: $e');
+      config.logger.error('保存设备信息缓存失败: $e');
     }
   }
 

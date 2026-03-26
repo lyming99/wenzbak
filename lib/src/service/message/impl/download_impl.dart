@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:dio/dio.dart';
 import 'package:wenzbak/src/config/backup.dart';
 import 'package:wenzbak/src/models/message.dart';
 import 'package:wenzbak/src/service/device/device.dart';
@@ -30,7 +31,6 @@ class WenzbakMessageDownloadServiceImpl extends WenzbakMessageDownloadService {
 
   @override
   Future<void> readMessage(Iterable<MessageReceiver> receivers) async {
-    config.logger.info('开始读取消息', tag: 'DownloadService');
     var storage = WenzbakStorageClientService.getInstance(config);
     if (storage == null) {
       config.logger.error('未配置存储服务', tag: 'DownloadService');
@@ -60,10 +60,6 @@ class WenzbakMessageDownloadServiceImpl extends WenzbakMessageDownloadService {
     await _saveProcessedMessageUuids();
     await _saveFileSha256Cache();
     await _saveDeviceLockCache();
-    config.logger.info(
-      '读取消息完成，耗时: ${DateTime.now().millisecondsSinceEpoch - startTime} ms',
-      tag: 'DownloadService',
-    );
   }
 
   Future<void> _readDeviceMessage(
@@ -161,15 +157,18 @@ class WenzbakMessageDownloadServiceImpl extends WenzbakMessageDownloadService {
       await Future.wait(futures);
       // 更新设备锁缓存
       _deviceLockCache[deviceId] = remoteLock;
-      config.logger.debug('处理设备消息完成: $deviceId', tag: 'DownloadService');
     } catch (e, stack) {
-      // 忽略单个设备处理失败，继续处理其他设备
-      if (!e.toString().contains("404")) {
-        config.logger.warn(
-          '处理设备消息失败: $deviceId, 错误: $e',
-          tag: 'DownloadService',
-        );
+      if (e is DioException) {
+        if (e.response?.statusCode == 404) {
+          // 读取消息文件，返回了404，说明设备的消息文件不存在，跳过该设备
+          return;
+        }
       }
+      // 忽略单个设备处理失败，继续处理其他设备
+      config.logger.error(
+        '处理设备消息失败: $deviceId, 错误: $e',
+        tag: 'DownloadService',
+      );
     }
   }
 
@@ -222,7 +221,7 @@ class WenzbakMessageDownloadServiceImpl extends WenzbakMessageDownloadService {
       _fileSha256Cache[filePath] = remoteSha256;
     } catch (e, stack) {
       // 忽略单个文件下载失败，继续处理其他文件
-      config.logger.warn(
+      config.logger.error(
         '下载消息文件失败: $filePath, 错误: $e',
         tag: 'DownloadService',
       );
@@ -332,7 +331,7 @@ class WenzbakMessageDownloadServiceImpl extends WenzbakMessageDownloadService {
         }
       } catch (e) {
         // 忽略单条消息解析失败，继续处理其他消息
-        config.logger.debug('解析消息失败: $e', tag: 'DownloadService');
+        config.logger.error('解析消息失败: $e', tag: 'DownloadService');
       }
     }
     // 4. 清理消息文件
@@ -416,7 +415,7 @@ class WenzbakMessageDownloadServiceImpl extends WenzbakMessageDownloadService {
           _processedMessageUuids[hourKey] = uuids.toSet();
         }
       } catch (e) {
-        print('加载已处理消息 uuid 缓存失败: $e');
+        config.logger.error('加载已处理消息 uuid 缓存失败: $e');
       }
     }
   }
@@ -437,7 +436,7 @@ class WenzbakMessageDownloadServiceImpl extends WenzbakMessageDownloadService {
       }
       await File(cacheFile).writeAsString(jsonEncode(mapToSave));
     } catch (e) {
-      print('保存已处理消息 uuid 缓存失败: $e');
+      config.logger.error('保存已处理消息 uuid 缓存失败: $e');
     }
   }
 
@@ -487,7 +486,7 @@ class WenzbakMessageDownloadServiceImpl extends WenzbakMessageDownloadService {
         var map = jsonDecode(content) as Map;
         _fileSha256Cache.addAll(Map<String, String>.from(map));
       } catch (e) {
-        print('加载文件 sha256 缓存失败: $e');
+        config.logger.error('加载文件 sha256 缓存失败: $e');
       }
     }
   }
@@ -500,7 +499,7 @@ class WenzbakMessageDownloadServiceImpl extends WenzbakMessageDownloadService {
       await FileUtils.createParentDir(cacheFile);
       await File(cacheFile).writeAsString(jsonEncode(_fileSha256Cache));
     } catch (e) {
-      print('保存文件 sha256 缓存失败: $e');
+      config.logger.error('保存文件 sha256 缓存失败: $e');
     }
   }
 
@@ -521,7 +520,7 @@ class WenzbakMessageDownloadServiceImpl extends WenzbakMessageDownloadService {
           );
         }
       } catch (e) {
-        print('加载设备锁缓存失败: $e');
+        config.logger.error('加载设备锁缓存失败: $e');
       }
     }
   }
@@ -541,7 +540,7 @@ class WenzbakMessageDownloadServiceImpl extends WenzbakMessageDownloadService {
       }
       await File(cacheFile).writeAsString(jsonEncode(map));
     } catch (e) {
-      print('保存设备锁缓存失败: $e');
+      config.logger.error('保存设备锁缓存失败: $e');
     }
   }
 }

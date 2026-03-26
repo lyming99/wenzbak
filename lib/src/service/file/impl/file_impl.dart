@@ -296,7 +296,7 @@ class WenzbakFileServiceImpl implements WenzbakFileService {
         await storage.deleteFile(filePath);
       } catch (e) {
         // 忽略删除失败的文件，继续删除其他文件
-        print('删除临时文件失败: $filePath, 错误: $e');
+        config.logger.error('删除临时文件失败: $filePath, 错误: $e');
       }
     }
   }
