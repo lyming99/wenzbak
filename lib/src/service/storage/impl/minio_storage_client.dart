@@ -59,7 +59,14 @@ class MinioStorageClient extends WenzbakStorageClientService {
   Future<void> downloadFile(String path, String localFilepath) async {
     var objectKey = _getObjectKey(path);
     await FileUtils.createParentDir(localFilepath);
-    await _minio.fGetObject(bucket, objectKey, localFilepath);
+    try {
+      await _minio.fGetObject(bucket, objectKey, localFilepath);
+    } on MinioS3Error catch (e) {
+      if (_isNotImplementedError(e)) {
+        throw Exception('当前存储服务不支持此操作(下载文件): ${e.message}');
+      }
+      rethrow;
+    }
   }
 
   @override
@@ -68,10 +75,11 @@ class MinioStorageClient extends WenzbakStorageClientService {
     try {
       await _minio.removeObject(bucket, objectKey);
     } on MinioS3Error catch (e) {
-      if (e.error?.code != 'NoSuchKey') {
-        rethrow;
+      if (e.error?.code == 'NoSuchKey') {
+        // 文件不存在，忽略错误
+        return;
       }
-      // 文件不存在，忽略错误
+      rethrow;
     }
   }
 
@@ -82,7 +90,15 @@ class MinioStorageClient extends WenzbakStorageClientService {
       objectKey = '$objectKey/';
     }
     // 在 S3/MinIO 中创建空对象表示文件夹
-    await _minio.putObject(bucket, objectKey, Stream<Uint8List>.value(Uint8List(0)));
+    try {
+      await _minio.putObject(bucket, objectKey, Stream<Uint8List>.value(Uint8List(0)));
+    } on MinioS3Error catch (e) {
+      if (_isNotImplementedError(e)) {
+        // 不支持创建文件夹操作，忽略（S3 本身无文件夹概念）
+        return;
+      }
+      rethrow;
+    }
   }
 
   @override
@@ -100,10 +116,11 @@ class MinioStorageClient extends WenzbakStorageClientService {
     try {
       await _minio.removeObject(bucket, objectKey);
     } on MinioS3Error catch (e) {
-      if (e.error?.code != 'NoSuchKey') {
-        rethrow;
+      if (e.error?.code == 'NoSuchKey') {
+        // 文件夹不存在，忽略错误
+        return;
       }
-      // 文件夹不存在，忽略错误
+      rethrow;
     }
   }
 
@@ -137,10 +154,45 @@ class MinioStorageClient extends WenzbakStorageClientService {
           ));
         }
       }
-    } on Exception {
-      // 如果列表为空或出错，返回空列表
+    } on MinioS3Error catch (e) {
+      // 如果是不支持的 API 错误，尝试使用 listObjectsV2 降级
+      if (_isNotImplementedError(e)) {
+        return await _listFilesFallbackV2(prefix);
+      }
+      rethrow;
     }
 
+    return files;
+  }
+
+  /// 使用 listObjectsV2 的降级列表方法
+  /// 某些 S3 兼容服务对 listObjects V1 支持不完整，但 V2 可用
+  Future<List<WenzbakStorageFile>> _listFilesFallbackV2(String prefix) async {
+    var files = <WenzbakStorageFile>[];
+    try {
+      await for (var chunk in _minio.listObjectsV2(bucket, prefix: prefix, recursive: false)) {
+        for (var obj in chunk.objects) {
+          var key = obj.key;
+          if (key == null) continue;
+          if (key == prefix) continue;
+
+          var relativePath = key.startsWith(prefix) ? key.substring(prefix.length) : key;
+          var isDir = key.endsWith('/') || relativePath.contains('/');
+
+          files.add(WenzbakStorageFile(
+            path: key,
+            isDir: isDir,
+          ));
+        }
+      }
+    } on MinioS3Error catch (e) {
+      if (e.error?.code == 'NoSuchKey' || e.error?.code == 'NotFound') {
+        return [];
+      }
+      rethrow;
+    } on Exception {
+      // V2 也失败，返回空列表
+    }
     return files;
   }
 
@@ -158,6 +210,33 @@ class MinioStorageClient extends WenzbakStorageClientService {
       if (e.error?.code == 'NoSuchKey' || e.error?.code == 'NotFound') {
         return null;
       }
+      if (_isNotImplementedError(e)) {
+        // 不支持 getObject，尝试使用 getPartialObject 降级读取
+        return await _readFileFallback(objectKey);
+      }
+      rethrow;
+    }
+  }
+
+  /// 使用 getPartialObject 的降级读取方法
+  /// 某些 S3 兼容服务不支持 getObject，但支持 getPartialObject（范围请求）
+  Future<Uint8List?> _readFileFallback(String objectKey) async {
+    try {
+      // 先获取文件大小
+      var stat = await _minio.statObject(bucket, objectKey, retrieveAcls: false);
+      var size = stat.size ?? 0;
+      if (size == 0) return Uint8List(0);
+      // 使用范围请求读取全部内容
+      var stream = await _minio.getPartialObject(bucket, objectKey, 0, size);
+      var builder = BytesBuilder();
+      await for (var chunk in stream) {
+        builder.add(chunk);
+      }
+      return builder.takeBytes();
+    } on MinioS3Error catch (e) {
+      if (e.error?.code == 'NoSuchKey' || e.error?.code == 'NotFound') {
+        return null;
+      }
       rethrow;
     }
   }
@@ -166,11 +245,16 @@ class MinioStorageClient extends WenzbakStorageClientService {
   Future<int> readFileSize(String path) async {
     var objectKey = _getObjectKey(path);
     try {
-      var stat = await _minio.statObject(bucket, objectKey);
+      var stat = await _minio.statObject(bucket, objectKey, retrieveAcls: false);
       return stat.size ?? 0;
     } on MinioS3Error catch (e) {
       if (e.error?.code == 'NoSuchKey' || e.error?.code == 'NotFound') {
         return 0;
+      }
+      if (_isNotImplementedError(e)) {
+        // 不支持 statObject，尝试通过读取文件来获取大小
+        var data = await readFile(path);
+        return data?.length ?? 0;
       }
       rethrow;
     }
@@ -179,7 +263,14 @@ class MinioStorageClient extends WenzbakStorageClientService {
   @override
   Future<void> writeFile(String path, Uint8List data) async {
     var objectKey = _getObjectKey(path);
-    await _minio.putObject(bucket, objectKey, Stream<Uint8List>.value(data));
+    try {
+      await _minio.putObject(bucket, objectKey, Stream<Uint8List>.value(data));
+    } on MinioS3Error catch (e) {
+      if (_isNotImplementedError(e)) {
+        throw Exception('当前存储服务不支持此操作(写入文件): ${e.message}');
+      }
+      rethrow;
+    }
   }
 
   @override
@@ -199,6 +290,21 @@ class MinioStorageClient extends WenzbakStorageClientService {
     } on MinioS3Error catch (e) {
       if (e.error?.code == 'NoSuchKey' || e.error?.code == 'NotFound') {
         throw Exception('文件不存在: $path');
+      }
+      if (_isNotImplementedError(e)) {
+        // 不支持范围请求，降级为读取完整文件后截取
+        var fullData = await readFile(path);
+        if (fullData == null) {
+          throw Exception('文件不存在: $path');
+        }
+        if (start >= fullData.length) {
+          return Uint8List(0);
+        }
+        var end = start + length;
+        if (end > fullData.length) {
+          end = fullData.length;
+        }
+        return Uint8List.fromList(fullData.sublist(start, end));
       }
       rethrow;
     }
@@ -221,5 +327,16 @@ class MinioStorageClient extends WenzbakStorageClientService {
     ]);
 
     await writeFile(path, newData);
+  }
+
+  /// 判断是否为 S3 "NotImplemented" 错误
+  /// 某些 S3 兼容服务不支持完整的 S3 API（如 GetObjectAcl），
+  /// 会返回 code=NotImplemented 或在 message 中包含 "not implemented"
+  static bool _isNotImplementedError(MinioS3Error e) {
+    final code = e.error?.code;
+    final message = e.error?.message ?? e.message ?? '';
+    return code == 'NotImplemented' ||
+        code == 'NotImplementedException' ||
+        message.toLowerCase().contains('not implemented');
   }
 }
