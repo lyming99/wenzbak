@@ -14,6 +14,10 @@ class WenzbakClientServiceImpl extends WenzbakClientService {
   late WenzbakMessageService messageService;
   late WenzbakDeviceService deviceService;
 
+  bool _isUploading = false;
+  bool _isDownloading = false;
+  bool _isMerging = false;
+
   WenzbakClientServiceImpl(this.config) {
     dataService = WenzbakBlockDataServiceImpl(config);
     fileService = WenzbakFileServiceImpl(config);
@@ -98,12 +102,34 @@ class WenzbakClientServiceImpl extends WenzbakClientService {
 
   @override
   Future<void> downloadAllData() async {
-    await dataService.downloadAllData(dataReceivers);
+    if (_isDownloading) {
+      config.logger.debug('数据下载正在进行中，跳过本次执行', tag: 'BackupService');
+      return;
+    }
+    _isDownloading = true;
+    try {
+      await dataService.downloadAllData(dataReceivers);
+    } catch (e) {
+      config.logger.error('数据下载失败: $e', tag: 'BackupService');
+    } finally {
+      _isDownloading = false;
+    }
   }
 
   @override
   Future<void> reloadAllData() async {
-    await dataService.reloadAllData(dataReceivers);
+    if (_isDownloading) {
+      config.logger.debug('数据下载正在进行中，跳过本次执行', tag: 'BackupService');
+      return;
+    }
+    _isDownloading = true;
+    try {
+      await dataService.reloadAllData(dataReceivers);
+    } catch (e) {
+      config.logger.error('数据重新加载失败: $e', tag: 'BackupService');
+    } finally {
+      _isDownloading = false;
+    }
   }
 
   @override
@@ -123,12 +149,34 @@ class WenzbakClientServiceImpl extends WenzbakClientService {
 
   @override
   Future uploadAllData(bool oneHoursAgo) async {
-    await dataService.uploadBlockData(oneHoursAgo);
+    if (_isUploading) {
+      config.logger.debug('数据上传正在进行中，跳过本次执行', tag: 'BackupService');
+      return;
+    }
+    _isUploading = true;
+    try {
+      await dataService.uploadBlockData(oneHoursAgo);
+    } catch (e) {
+      config.logger.error('数据上传失败: $e', tag: 'BackupService');
+    } finally {
+      _isUploading = false;
+    }
   }
 
   @override
   Future<void> mergeHistoryData() async {
-    await dataService.mergeBlockData();
+    if (_isMerging) {
+      config.logger.debug('数据合并正在进行中，跳过本次执行', tag: 'BackupService');
+      return;
+    }
+    _isMerging = true;
+    try {
+      await dataService.mergeBlockData();
+    } catch (e) {
+      config.logger.error('数据合并失败: $e', tag: 'BackupService');
+    } finally {
+      _isMerging = false;
+    }
   }
 
   @override
