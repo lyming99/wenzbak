@@ -150,24 +150,20 @@ class FileStorageClient extends WenzbakStorageClientService {
 
   @override
   Future<void> writeRange(String path, int start, Uint8List data) async {
-    var fullPath = _getFullPath(path);
-    await FileUtils.createParentDir(fullPath);
-    
-    var file = File(fullPath);
-    var raf = await file.open(mode: FileMode.writeOnlyAppend);
-    try {
-      // 如果文件不存在或大小小于 start，需要先扩展文件
-      var currentSize = await file.length();
-      if (currentSize < start) {
-        // 填充空白数据
-        var padding = Uint8List(start - currentSize);
-        await raf.writeFrom(padding);
-      } else {
-        await raf.setPosition(start);
-      }
-      await raf.writeFrom(data);
-    } finally {
-      await raf.close();
+    var existingData = await readFile(path) ?? Uint8List(0);
+
+    if (existingData.length < start) {
+      var padding = Uint8List(start - existingData.length);
+      existingData = Uint8List.fromList([...existingData, ...padding]);
     }
+
+    var newData = Uint8List.fromList([
+      ...existingData.sublist(0, start),
+      ...data,
+      if (start + data.length < existingData.length)
+        ...existingData.sublist(start + data.length),
+    ]);
+
+    await writeFile(path, newData);
   }
 }

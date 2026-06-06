@@ -1,6 +1,6 @@
+import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:minio/io.dart';
 import 'package:minio/minio.dart';
 import 'package:uuid/uuid.dart';
 import 'package:wenzbak/src/config/backup.dart';
@@ -51,22 +51,19 @@ class MinioStorageClient extends WenzbakStorageClientService {
 
   @override
   Future<void> uploadFile(String path, String localFilepath) async {
-    var objectKey = _getObjectKey(path);
-    await _minio.fPutObject(bucket, objectKey, localFilepath);
+    var data = await File(localFilepath).readAsBytes();
+    await writeFile(path, data);
   }
 
   @override
   Future<void> downloadFile(String path, String localFilepath) async {
-    var objectKey = _getObjectKey(path);
-    await FileUtils.createParentDir(localFilepath);
-    try {
-      await _minio.fGetObject(bucket, objectKey, localFilepath);
-    } on MinioS3Error catch (e) {
-      if (_isNotImplementedError(e)) {
-        throw Exception('当前存储服务不支持此操作(下载文件): ${e.message}');
-      }
-      rethrow;
+    var data = await readFile(path);
+    if (data == null) {
+      throw Exception('文件不存在: $path');
     }
+
+    await FileUtils.createParentDir(localFilepath);
+    await File(localFilepath).writeAsBytes(data);
   }
 
   @override
@@ -103,25 +100,66 @@ class MinioStorageClient extends WenzbakStorageClientService {
 
   @override
   Future<void> deleteFolder(String path) async {
-    var files = await listFiles(path);
-    for (var file in files) {
-      if (file.path != null) {
-        await deleteFile(file.path!);
-      }
+    var prefix = _getObjectKey(path);
+    if (!prefix.endsWith('/') && prefix.isNotEmpty) {
+      prefix = '$prefix/';
     }
-    var objectKey = _getObjectKey(path);
-    if (!objectKey.endsWith('/')) {
-      objectKey = '$objectKey/';
-    }
+
     try {
-      await _minio.removeObject(bucket, objectKey);
-    } on MinioS3Error catch (e) {
-      if (e.error?.code == 'NoSuchKey') {
-        // 文件夹不存在，忽略错误
-        return;
+      await for (var chunk in _minio.listObjectsV2(bucket, prefix: prefix, recursive: true)) {
+        for (var obj in chunk.objects) {
+          var key = obj.key;
+          if (key != null) {
+            await deleteFile(key);
+          }
+        }
       }
-      rethrow;
+    } on MinioS3Error catch (e) {
+      if (e.error?.code != 'NoSuchKey' && e.error?.code != 'NotFound') {
+        rethrow;
+      }
     }
+
+    if (prefix.isNotEmpty) {
+      try {
+        await _minio.removeObject(bucket, prefix);
+      } on MinioS3Error catch (e) {
+        if (e.error?.code == 'NoSuchKey' || e.error?.code == 'NotFound') {
+          return;
+        }
+        rethrow;
+      }
+    }
+  }
+
+  void _addListEntry(
+    List<WenzbakStorageFile> files,
+    Set<String> seenPaths,
+    String key,
+    String prefix,
+    String originalPath,
+  ) {
+    var normalizedKey = _normalizePath(key);
+    if (normalizedKey == prefix || normalizedKey == originalPath) {
+      return;
+    }
+
+    var relativePath = normalizedKey.startsWith(prefix)
+        ? normalizedKey.substring(prefix.length)
+        : normalizedKey;
+    var isDir = normalizedKey.endsWith('/') || relativePath.contains('/');
+    var entryPath = isDir && !normalizedKey.endsWith('/')
+        ? '${prefix}${relativePath.split('/').first}'
+        : normalizedKey;
+
+    if (entryPath.endsWith('/') && entryPath.length > 1) {
+      entryPath = entryPath.substring(0, entryPath.length - 1);
+    }
+    if (!seenPaths.add(entryPath)) {
+      return;
+    }
+
+    files.add(WenzbakStorageFile(path: entryPath, isDir: isDir));
   }
 
   @override
@@ -132,32 +170,24 @@ class MinioStorageClient extends WenzbakStorageClientService {
     }
 
     var files = <WenzbakStorageFile>[];
+    var seenPaths = <String>{};
 
     try {
       await for (var chunk in _minio.listObjects(bucket, prefix: prefix, recursive: false)) {
         for (var obj in chunk.objects) {
           var key = obj.key;
-          if (key == null) continue;
-          if (key == prefix || key == path) {
-            continue;
+          if (key != null) {
+            _addListEntry(files, seenPaths, key, prefix, path);
           }
-
-          // 移除前缀，获取相对路径
-          var relativePath = key.startsWith(prefix) ? key.substring(prefix.length) : key;
-
-          // 如果是目录（以 / 结尾），或者在当前层级下还有 /
-          var isDir = key.endsWith('/') || relativePath.contains('/');
-
-          files.add(WenzbakStorageFile(
-            path: key,
-            isDir: isDir,
-          ));
+        }
+        for (var prefixPath in chunk.prefixes) {
+          _addListEntry(files, seenPaths, prefixPath, prefix, path);
         }
       }
     } on MinioS3Error catch (e) {
       // 如果是不支持的 API 错误，尝试使用 listObjectsV2 降级
       if (_isNotImplementedError(e)) {
-        return await _listFilesFallbackV2(prefix);
+        return await _listFilesFallbackV2(prefix, path);
       }
       rethrow;
     }
@@ -167,22 +197,19 @@ class MinioStorageClient extends WenzbakStorageClientService {
 
   /// 使用 listObjectsV2 的降级列表方法
   /// 某些 S3 兼容服务对 listObjects V1 支持不完整，但 V2 可用
-  Future<List<WenzbakStorageFile>> _listFilesFallbackV2(String prefix) async {
+  Future<List<WenzbakStorageFile>> _listFilesFallbackV2(String prefix, String originalPath) async {
     var files = <WenzbakStorageFile>[];
+    var seenPaths = <String>{};
     try {
       await for (var chunk in _minio.listObjectsV2(bucket, prefix: prefix, recursive: false)) {
         for (var obj in chunk.objects) {
           var key = obj.key;
-          if (key == null) continue;
-          if (key == prefix) continue;
-
-          var relativePath = key.startsWith(prefix) ? key.substring(prefix.length) : key;
-          var isDir = key.endsWith('/') || relativePath.contains('/');
-
-          files.add(WenzbakStorageFile(
-            path: key,
-            isDir: isDir,
-          ));
+          if (key != null) {
+            _addListEntry(files, seenPaths, key, prefix, originalPath);
+          }
+        }
+        for (var prefixPath in chunk.prefixes) {
+          _addListEntry(files, seenPaths, prefixPath, prefix, originalPath);
         }
       }
     } on MinioS3Error catch (e) {
@@ -190,8 +217,6 @@ class MinioStorageClient extends WenzbakStorageClientService {
         return [];
       }
       rethrow;
-    } on Exception {
-      // V2 也失败，返回空列表
     }
     return files;
   }

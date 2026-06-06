@@ -36,7 +36,6 @@ class WenzbakMessageDownloadServiceImpl extends WenzbakMessageDownloadService {
       config.logger.error('未配置存储服务', tag: 'DownloadService');
       throw "未配置存储服务";
     }
-    var startTime = DateTime.now().millisecondsSinceEpoch;
     // 1. 读取设备列表
     var deviceService = WenzbakDeviceService.getInstance(config);
     var deviceIds = await deviceService.queryDeviceIdList();
@@ -157,7 +156,7 @@ class WenzbakMessageDownloadServiceImpl extends WenzbakMessageDownloadService {
       await Future.wait(futures);
       // 更新设备锁缓存
       _deviceLockCache[deviceId] = remoteLock;
-    } catch (e, stack) {
+    } catch (e) {
       if (e is DioException) {
         if (e.response?.statusCode == 404) {
           // 读取消息文件，返回了404，说明设备的消息文件不存在，跳过该设备
@@ -219,7 +218,7 @@ class WenzbakMessageDownloadServiceImpl extends WenzbakMessageDownloadService {
       );
       // 更新 sha256 缓存
       _fileSha256Cache[filePath] = remoteSha256;
-    } catch (e, stack) {
+    } catch (e) {
       // 忽略单个文件下载失败，继续处理其他文件
       config.logger.error(
         '下载消息文件失败: $filePath, 错误: $e',

@@ -222,7 +222,7 @@ class WebDAVStorageClient extends WenzbakStorageClientService {
       var hrefText = responseElement
           .findElements('href', namespace: davNamespace)
           .firstOrNull
-          ?.text;
+          ?.innerText;
       if (hrefText == null || hrefText.isEmpty) continue;
 
       // URL 解码
@@ -311,7 +311,7 @@ class WebDAVStorageClient extends WenzbakStorageClientService {
             propstat
                 .findElements('status', namespace: davNamespace)
                 .firstOrNull
-                ?.text ??
+                ?.innerText ??
             '';
         if (status.contains('200')) {
           // 查找 resourcetype（支持命名空间前缀）
@@ -351,8 +351,12 @@ class WebDAVStorageClient extends WenzbakStorageClientService {
       }
       seenPaths.add(pathForComparison);
 
-      // 返回绝对路径（保持以 / 开头的格式，但移除末尾的斜杠）
-      var returnPath = absolutePath;
+      var normalizedRemotePath = _normalizePath(path);
+      if (normalizedRemotePath.isNotEmpty && !normalizedRemotePath.endsWith('/')) {
+        normalizedRemotePath = '$normalizedRemotePath/';
+      }
+
+      var returnPath = '$normalizedRemotePath$relativePart';
       if (returnPath.endsWith('/') && returnPath.length > 1) {
         returnPath = returnPath.substring(0, returnPath.length - 1);
       }
@@ -375,8 +379,8 @@ class WebDAVStorageClient extends WenzbakStorageClientService {
     }
     if (response.statusCode != 200) {
       var bytes = await response.stream.toBytes();
-      print(utf8.decode(bytes));
-      throw Exception('读取文件失败: ${response.statusCode}');
+      var responseBody = utf8.decode(bytes, allowMalformed: true);
+      throw Exception('读取文件失败: ${response.statusCode}, 响应: ${responseBody.length > 200 ? responseBody.substring(0, 200) : responseBody}');
     }
 
     return await response.stream.toBytes();
@@ -392,15 +396,20 @@ class WebDAVStorageClient extends WenzbakStorageClientService {
     if (response.statusCode == 404) {
       return 0;
     }
+    if (response.statusCode == 405 || response.statusCode == 501) {
+      var data = await readFile(path);
+      return data?.length ?? 0;
+    }
     if (response.statusCode != 200) {
       throw Exception('获取文件大小失败: ${response.statusCode}');
     }
 
     var contentLength = response.headers['content-length'];
     if (contentLength != null) {
-      return int.parse(contentLength);
+      return int.tryParse(contentLength) ?? 0;
     }
-    return 0;
+    var data = await readFile(path);
+    return data?.length ?? 0;
   }
 
   @override
