@@ -41,6 +41,12 @@ class WenzbakBlockDataServiceImpl implements WenzbakBlockDataService {
 
   final Map<String, String> _localSha256Cache = {};
 
+  /// 上一轮失败的数据块。下一轮同步时优先重试。
+  ///
+  /// 该缓存只影响重试顺序；下载失败时本地 SHA256 不会更新，因此即使应用
+  /// 重启，失败的数据块仍会通过远端索引再次下载。
+  final Map<String, String> _failedDownloadEntries = {};
+
   @override
   Future<void> addBackupData(WenzbakDataLine line) async {
     var data = line.content;
@@ -498,6 +504,8 @@ class WenzbakBlockDataServiceImpl implements WenzbakBlockDataService {
     if (storage == null) {
       throw "storage is null";
     }
+    final failures = <String, SyncDownloadFailure>{};
+    var total = 0;
     // 1.读取索引列表
     var remoteBlockIndexPath = config.getRemoteBlockIndexDir();
     var indexList = await storage.listFiles(remoteBlockIndexPath);
@@ -515,20 +523,14 @@ class WenzbakBlockDataServiceImpl implements WenzbakBlockDataService {
         var indexBytes = GZipUtil.decompressBytes(bytes);
         var indexString = utf8.decode(indexBytes);
         var indexMap = IndexUtil.readIndexMap(indexString);
-        // 2.根据索引下载数据
-        for (var index in indexMap.entries) {
-          // path
-          var key = index.key;
-          // sha256
-          var value = index.value;
-          try {
-            await downloadData(key, value, dataReceivers);
-          } catch (e) {
-            config.logger.error('下载数据失败(reload all data)：$e');
-          }
-        }
+        total += await _downloadIndexEntries(
+          indexMap,
+          dataReceivers,
+          failures: failures,
+        );
       }
     }
+    _throwIfDownloadPartiallyFailed(total, failures);
   }
 
   @override
@@ -537,6 +539,8 @@ class WenzbakBlockDataServiceImpl implements WenzbakBlockDataService {
     if (storage == null) {
       throw "storage is null";
     }
+    final failures = <String, SyncDownloadFailure>{};
+    var total = 0;
     // 1.读取索引列表
     var remoteBlockIndexPath = config.getRemoteBlockIndexDir();
     var indexList = await storage.listFiles(remoteBlockIndexPath);
@@ -557,20 +561,73 @@ class WenzbakBlockDataServiceImpl implements WenzbakBlockDataService {
         var indexString = utf8.decode(indexBytes);
         var indexMap = IndexUtil.readIndexMap(indexString);
         print("待下载文件列表:${indexMap.length}");
-        // 2.根据索引下载数据
-        for (var index in indexMap.entries) {
-          // path
-          var key = index.key;
-          // sha256
-          var value = index.value;
-          print("下载设备文件:${key}");
-          try {
-            await downloadData(key, value, dataReceivers, reload: true);
-          } catch (e) {
-            config.logger.error('下载数据失败(reload all data)：$e');
-          }
-        }
+        total += await _downloadIndexEntries(
+          indexMap,
+          dataReceivers,
+          failures: failures,
+          reload: true,
+        );
       }
+    }
+    _throwIfDownloadPartiallyFailed(total, failures);
+  }
+
+  Future<int> _downloadIndexEntries(
+    Map<String, String> indexMap,
+    Set<WenzbakDataReceiver> dataReceivers, {
+    required Map<String, SyncDownloadFailure> failures,
+    bool reload = false,
+  }) async {
+    final orderedEntries = <MapEntry<String, String>>[];
+    for (final entry in indexMap.entries) {
+      if (_failedDownloadEntries.containsKey(entry.key)) {
+        orderedEntries.add(entry);
+      }
+    }
+    for (final entry in indexMap.entries) {
+      if (!_failedDownloadEntries.containsKey(entry.key)) {
+        orderedEntries.add(entry);
+      }
+    }
+
+    for (final entry in orderedEntries) {
+      try {
+        if (reload) {
+          print("下载设备文件:${entry.key}");
+        }
+        await downloadData(
+          entry.key,
+          entry.value,
+          dataReceivers,
+          reload: reload,
+        );
+        _failedDownloadEntries.remove(entry.key);
+        failures.remove(entry.key);
+      } catch (error, stackTrace) {
+        _failedDownloadEntries[entry.key] = entry.value;
+        failures[entry.key] = SyncDownloadFailure(
+          path: entry.key,
+          sha256: entry.value,
+          error: error,
+          stackTrace: stackTrace,
+        );
+        config.logger.error(
+          reload ? '重新下载数据块失败: ${entry.key}' : '下载数据块失败: ${entry.key}',
+          error: error,
+          stackTrace: stackTrace,
+          tag: 'BlockDataService',
+        );
+      }
+    }
+    return orderedEntries.length;
+  }
+
+  void _throwIfDownloadPartiallyFailed(
+    int total,
+    Map<String, SyncDownloadFailure> failures,
+  ) {
+    if (failures.isNotEmpty) {
+      throw SyncPartialException(total: total, failures: failures.values);
     }
   }
 

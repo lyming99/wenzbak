@@ -1,5 +1,7 @@
 import 'package:wenzbak/src/models/index.dart';
 
+export 'sync_partial_exception.dart';
+
 /// 数据接收器
 /// 用于接收数据下载时解析出来的行数据
 abstract class WenzbakDataReceiver {

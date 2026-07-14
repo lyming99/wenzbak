@@ -109,8 +109,14 @@ class WenzbakClientServiceImpl extends WenzbakClientService {
     _isDownloading = true;
     try {
       await dataService.downloadAllData(dataReceivers);
-    } catch (e) {
-      config.logger.error('数据下载失败: $e', tag: 'BackupService');
+    } catch (e, stackTrace) {
+      config.logger.error(
+        '数据下载失败: $e',
+        error: e,
+        stackTrace: stackTrace,
+        tag: 'BackupService',
+      );
+      rethrow;
     } finally {
       _isDownloading = false;
     }
@@ -125,8 +131,14 @@ class WenzbakClientServiceImpl extends WenzbakClientService {
     _isDownloading = true;
     try {
       await dataService.reloadAllData(dataReceivers);
-    } catch (e) {
-      config.logger.error('数据重新加载失败: $e', tag: 'BackupService');
+    } catch (e, stackTrace) {
+      config.logger.error(
+        '数据重新加载失败: $e',
+        error: e,
+        stackTrace: stackTrace,
+        tag: 'BackupService',
+      );
+      rethrow;
     } finally {
       _isDownloading = false;
     }
